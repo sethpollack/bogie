@@ -1,0 +1,11 @@
+package: .
+import:
+- package: github.com/BurntSushi/toml
+  version: ~0.3.0
+- package: github.com/Masterminds/sprig
+  version: ~2.12.0
+- package: github.com/spf13/cobra
+- package: github.com/ugorji/go
+  subpackages:
+  - codec
+- package: gopkg.in/yaml.v2
