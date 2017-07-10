@@ -26,7 +26,7 @@ func newEcr() *Ecr {
 	return &Ecr{
 		describer: func() EcrDescriber {
 			if describerClient == nil {
-				describerClient = ecrClient("us-east-1")
+				describerClient = ecrClient()
 			}
 			return describerClient
 		},
@@ -34,9 +34,8 @@ func newEcr() *Ecr {
 	}
 }
 
-func ecrClient(region string) (client EcrDescriber) {
+func ecrClient() (client EcrDescriber) {
 	config := aws.NewConfig()
-	config = config.WithRegion(region)
 	timeout := 500 * time.Millisecond
 	config = config.WithHTTPClient(&http.Client{Timeout: timeout})
 	return ecr.New(session.New(config))
