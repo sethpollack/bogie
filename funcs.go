@@ -6,8 +6,11 @@ func initFuncs(o *BogieOpts) template.FuncMap {
 	env := &Env{}
 	typeconv := &TypeConv{}
 	file := &File{}
+	ecr := &EcrInit{}
+	ecr.ecrInit.Do(ecr.initEcr)
 
 	f := template.FuncMap{
+		"latestImage":  ecr.ecr.LatestImage,
 		"readDir":      file.ReadDir(o),
 		"readFile":     file.ReadFile(o),
 		"getenv":       env.Getenv,

@@ -1,4 +1,4 @@
-package: .
+package: github.com/sethpollack/bogie
 import:
 - package: github.com/BurntSushi/toml
   version: ~0.3.0
@@ -9,3 +9,7 @@ import:
   subpackages:
   - codec
 - package: gopkg.in/yaml.v2
+- package: github.com/aws/aws-sdk-go
+  version: ~1.10.8
+  subpackages:
+  - aws
