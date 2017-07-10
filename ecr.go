@@ -89,12 +89,12 @@ func containsMatcher(tags []*string, matcher string) bool {
 }
 
 type EcrInit struct {
-	ecr     *Ecr
+	client  *Ecr
 	ecrInit sync.Once
 }
 
 func (e *EcrInit) initEcr() {
-	if e.ecr == nil {
-		e.ecr = newEcr()
+	if e.client == nil {
+		e.client = newEcr()
 	}
 }
