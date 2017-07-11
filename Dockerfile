@@ -1,4 +1,4 @@
-FROM instrumentisto/glide AS vendor
+FROM beenverifiedinc/glide AS vendor
 COPY glide.yaml glide.lock /app/
 WORKDIR /app
 RUN glide install
