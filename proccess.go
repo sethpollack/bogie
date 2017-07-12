@@ -4,28 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 )
 
-func processInputFiles(stringTemplate string, input []string, output []string, b *Bogie) error {
-	input, err := readInputs(stringTemplate, input)
-	if err != nil {
-		return err
-	}
-
-	if len(output) == 0 {
-		output = []string{"-"}
-	}
-
-	for n, input := range input {
-		if err := renderTemplate(b, input, output[n]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func processInputDir(input string, output string, b *Bogie) error {
+func processInputDir(envfile, input, output string, b *Bogie) error {
 	input = filepath.Clean(input)
 	output = filepath.Clean(output)
 
@@ -35,6 +19,7 @@ func processInputDir(input string, output string, b *Bogie) error {
 	}
 
 	entries, err := ioutil.ReadDir(input)
+
 	if err != nil {
 		return err
 	}
@@ -47,8 +32,12 @@ func processInputDir(input string, output string, b *Bogie) error {
 		nextInPath := filepath.Join(input, entry.Name())
 		nextOutPath := filepath.Join(output, entry.Name())
 
+		if ok, _ := regexp.MatchString(b.inputIgnore, entry.Name()); ok {
+			continue
+		}
+
 		if entry.IsDir() {
-			err := processInputDir(nextInPath, nextOutPath, b)
+			err := processInputDir(envfile, nextInPath, nextOutPath, b)
 			if err != nil {
 				return err
 			}
@@ -57,31 +46,23 @@ func processInputDir(input string, output string, b *Bogie) error {
 			if err != nil {
 				return err
 			}
-			if err := renderTemplate(b, inString, nextOutPath); err != nil {
+
+			inValues, err := readInput(path.Dir(nextInPath) + "/values.yaml")
+			if err != nil {
+				return err
+			}
+
+			inEnv, err := readInput(b.inputDir + "/" + envfile)
+			if err != nil {
+				return err
+			}
+
+			if err := renderTemplate(b, inString, inValues, inEnv, nextOutPath); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
-}
-
-func readInputs(input string, files []string) ([]string, error) {
-	if input != "" {
-		return []string{input}, nil
-	}
-	if len(files) == 0 {
-		files = []string{"-"}
-	}
-	ins := make([]string, len(files))
-
-	for n, filename := range files {
-		inString, err := readInput(filename)
-		if err != nil {
-			return nil, err
-		}
-		ins[n] = inString
-	}
-	return ins, nil
 }
 
 func readInput(filename string) (string, error) {

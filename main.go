@@ -9,39 +9,29 @@ import (
 )
 
 type BogieOpts struct {
-	lDelim string
-	rDelim string
-
-	input       string
-	inputFiles  []string
+	lDelim      string
+	rDelim      string
+	inputIgnore string
 	inputDir    string
-	outputFiles []string
 	outputDir   string
+	envfile     string
 }
 
 var opts BogieOpts
 
 func validateOpts(cmd *cobra.Command, args []string) error {
-	if cmd.Flag("in").Changed && cmd.Flag("file").Changed {
-		return errors.New("--in and --file may not be used together")
+	if !cmd.Flag("env-file").Changed {
+		return errors.New("--env-file must be set")
 	}
 
-	if len(opts.inputFiles) != len(opts.outputFiles) {
-		return fmt.Errorf("Must provide same number of --out (%d) as --file (%d) options", len(opts.outputFiles), len(opts.inputFiles))
+	if !cmd.Flag("input-dir").Changed {
+		return errors.New("--input-dir must be set")
 	}
 
-	if cmd.Flag("input-dir").Changed && (cmd.Flag("in").Changed || cmd.Flag("file").Changed) {
-		return errors.New("--input-dir can not be used together with --in or --file")
+	if !cmd.Flag("output-dir").Changed {
+		return errors.New("--output-dir must be set")
 	}
 
-	if cmd.Flag("output-dir").Changed {
-		if cmd.Flag("out").Changed {
-			return errors.New("--output-dir can not be used together with --out")
-		}
-		if !cmd.Flag("input-dir").Changed {
-			return errors.New("--input-dir must be set when --output-dir is set")
-		}
-	}
 	return nil
 }
 
@@ -58,11 +48,10 @@ func newBogieCmd() *cobra.Command {
 }
 
 func initFlags(command *cobra.Command) {
-	command.Flags().StringArrayVarP(&opts.inputFiles, "file", "f", []string{"-"}, "Template `file` to process. Omit to use standard input, or use --in or --input-dir")
-	command.Flags().StringVarP(&opts.input, "in", "i", "", "Template `string` to process (alternative to --file and --input-dir)")
-	command.Flags().StringVar(&opts.inputDir, "input-dir", "", "`directory` which is examined recursively for templates (alternative to --file and --in)")
-	command.Flags().StringArrayVarP(&opts.outputFiles, "out", "o", []string{"-"}, "output `file` name. Omit to use standard output.")
-	command.Flags().StringVar(&opts.outputDir, "output-dir", ".", "`directory` to store the processed templates. Only used for --input-dir")
+	command.Flags().StringVar(&opts.envfile, "env-file", "", "app env file to load into the context must live at the base of the templates dir")
+	command.Flags().StringVar(&opts.inputDir, "input-dir", "templates", "`directory` which is examined recursively for templates")
+	command.Flags().StringVar(&opts.outputDir, "output-dir", "releases", "`directory` to store the processed templates.")
+	command.Flags().StringVar(&opts.inputIgnore, "input-ignore", "values.yaml", "regex for files/directories to ignore")
 
 	env := &Env{}
 	ldDefault := env.Getenv("BOGIE_LEFT_DELIM", "{{{")

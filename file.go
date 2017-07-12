@@ -9,21 +9,20 @@ import (
 type File struct {
 }
 
-func (f *File) ReadFile(o *BogieOpts) func(string) string {
+func (f *File) ReadFile(b *Bogie) func(string) string {
 	return func(path string) string {
 		output, err := ioutil.ReadFile(path)
 		if err != nil {
 			log.Fatal(err)
 		}
 		var buff bytes.Buffer
-		b := NewBogie(o)
 		b.RunTemplate(string(output), &buff)
 		return buff.String()
 	}
 }
 
-func (f *File) ReadDir(o *BogieOpts) func(string) map[string]string {
-	readFileFunc := f.ReadFile(o)
+func (f *File) ReadDir(b *Bogie) func(string) map[string]string {
+	readFileFunc := f.ReadFile(b)
 	return func(dir string) map[string]string {
 		fileMap := make(map[string]string)
 		files, err := ioutil.ReadDir(dir)

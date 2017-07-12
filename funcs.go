@@ -2,7 +2,7 @@ package main
 
 import "text/template"
 
-func initFuncs(o *BogieOpts) template.FuncMap {
+func (b *Bogie) InitFuncs() template.FuncMap {
 	env := &Env{}
 	typeconv := &TypeConv{}
 	file := &File{}
@@ -12,8 +12,8 @@ func initFuncs(o *BogieOpts) template.FuncMap {
 
 	f := template.FuncMap{
 		"latestImage":  ecr.client.LatestImage,
-		"readDir":      file.ReadDir(o),
-		"readFile":     file.ReadFile(o),
+		"readDir":      file.ReadDir(b),
+		"readFile":     file.ReadFile(b),
 		"getenv":       env.Getenv,
 		"json":         typeconv.JSON,
 		"jsonArray":    typeconv.JSONArray,
