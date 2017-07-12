@@ -11,22 +11,10 @@ import (
 
 var temp *template.Template
 
-func (b *Bogie) createTemplate() *template.Template {
-	if temp == nil {
-		temp = template.New("template").
-			Funcs(sprig.TxtFuncMap()).
-			Funcs(b.InitFuncs()).
-			Option("missingkey=error")
-	}
-	return temp
-}
-
-type Bogie struct {
-	leftDelim   string
-	rightDelim  string
-	inputIgnore string
-	inputDir    string
-	context     *Context
+type Application struct {
+	Name      string
+	Templates string
+	Values    string
 }
 
 type Context struct {
@@ -34,29 +22,77 @@ type Context struct {
 	Env    *map[interface{}]interface{}
 }
 
-func (b *Bogie) RunTemplate(text string, out io.Writer) {
-	tmpl, err := b.createTemplate().Delims(b.leftDelim, b.rightDelim).Parse(text)
+type Bogie struct {
+	EnvFile      string `yaml:"env_file"`
+	OutDir       string `yaml:"out_dir"`
+	LDelim       string
+	RDelim       string
+	IgnoreRegex  string `yaml:"ignore_regex"`
+	Applications []*Application
+}
+
+func NewBogie(o *BogieOpts) *Bogie {
+	b := &Bogie{
+		EnvFile: o.envFile,
+		OutDir:  o.outDir,
+		LDelim:  o.lDelim,
+		RDelim:  o.rDelim,
+	}
+
+	if o.templates != "" && o.values != "" {
+		b.Applications = append(b.Applications, &Application{
+			Templates: o.templates,
+			Values:    o.values,
+		})
+	}
+
+	err := parseManifest(o.manifest, b)
+	if err != nil {
+		log.Fatalf("error parsing manifest file %v\n", err)
+	}
+	return b
+}
+
+func createTemplate(c *Context, b *Bogie) *template.Template {
+	if temp == nil {
+		temp = template.New("template").
+			Funcs(sprig.TxtFuncMap()).
+			Funcs(initFuncs(c, b)).
+			Option("missingkey=error")
+	}
+	return temp
+}
+
+func RunTemplate(c *Context, b *Bogie, text string, out io.Writer) {
+	tmpl, err := createTemplate(c, b).
+		Delims(b.LDelim, b.RDelim).
+		Parse(text)
+
 	if err != nil {
 		log.Fatalf("Line %q: %v\n", text, err)
 	}
-	if err := tmpl.Execute(out, b.context); err != nil {
+	if err := tmpl.Execute(out, c); err != nil {
 		panic(err)
 	}
 }
 
-func NewBogie(o *BogieOpts) *Bogie {
-	return &Bogie{
-		leftDelim:   o.lDelim,
-		rightDelim:  o.rDelim,
-		inputDir:    o.inputDir,
-		inputIgnore: o.inputIgnore,
-		context:     &Context{},
+func parseManifest(manifest string, b *Bogie) error {
+	output, err := readInput(manifest)
+	if err != nil {
+		return err
 	}
+
+	err = yaml.Unmarshal([]byte(output), b)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func runTemplate(o *BogieOpts) error {
 	b := NewBogie(o)
-	return processInputDir(o.envfile, o.inputDir, o.outputDir, b)
+	return proccessApplications(b)
 }
 
 func renderTemplate(b *Bogie, inString, inValues, inEnv, outPath string) error {
@@ -66,16 +102,18 @@ func renderTemplate(b *Bogie, inString, inValues, inEnv, outPath string) error {
 	}
 	defer outFile.Close()
 
-	err = yaml.Unmarshal([]byte(inValues), &b.context.Values)
+	c := &Context{}
+
+	err = yaml.Unmarshal([]byte(inValues), &c.Values)
 	if err != nil {
 		return err
 	}
 
-	err = yaml.Unmarshal([]byte(inEnv), &b.context.Env)
+	err = yaml.Unmarshal([]byte(inEnv), &c.Env)
 	if err != nil {
 		return err
 	}
 
-	b.RunTemplate(inString, outFile)
+	RunTemplate(c, b, inString, outFile)
 	return nil
 }

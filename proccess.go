@@ -3,30 +3,39 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 
 	"go.mozilla.org/sops/decrypt"
 )
 
-func processInputDir(envfile, input, output string, b *Bogie) error {
+func proccessApplications(b *Bogie) error {
+	for _, app := range b.Applications {
+		err := proccessApplication(app.Templates, b.OutDir+"/"+app.Name, app.Values, b.EnvFile, b)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func proccessApplication(input, output, values, envfile string, b *Bogie) error {
 	input = filepath.Clean(input)
 	output = filepath.Clean(output)
 
-	si, err := os.Stat(input)
+	fi, err := os.Stat(input)
 	if err != nil {
 		return err
 	}
 
 	entries, err := ioutil.ReadDir(input)
-
 	if err != nil {
 		return err
 	}
 
-	if err = os.MkdirAll(output, si.Mode()); err != nil {
+	if err = os.MkdirAll(output, fi.Mode()); err != nil {
 		return err
 	}
 
@@ -34,12 +43,13 @@ func processInputDir(envfile, input, output string, b *Bogie) error {
 		nextInPath := filepath.Join(input, entry.Name())
 		nextOutPath := filepath.Join(output, entry.Name())
 
-		if ok, _ := regexp.MatchString(b.inputIgnore, entry.Name()); ok {
+		log.Printf("checking ignore for %s", entry.Name())
+		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
 
 		if entry.IsDir() {
-			err := processInputDir(envfile, nextInPath, nextOutPath, b)
+			err := proccessApplication(nextInPath, nextOutPath, values, envfile, b)
 			if err != nil {
 				return err
 			}
@@ -49,12 +59,12 @@ func processInputDir(envfile, input, output string, b *Bogie) error {
 				return err
 			}
 
-			inValues, err := decrypt.File(path.Dir(nextInPath)+"/values.yaml", "yaml")
+			inValues, err := decrypt.File(values, "yaml")
 			if err != nil {
 				return err
 			}
 
-			inEnv, err := decrypt.File(b.inputDir+"/"+envfile, "yaml")
+			inEnv, err := decrypt.File(envfile, "yaml")
 			if err != nil {
 				return err
 			}
@@ -70,26 +80,22 @@ func processInputDir(envfile, input, output string, b *Bogie) error {
 func readInput(filename string) (string, error) {
 	var err error
 	var inFile *os.File
-	if filename == "-" {
-		inFile = os.Stdin
-	} else {
-		inFile, err = os.Open(filename)
-		if err != nil {
-			return "", fmt.Errorf("failed to open %s\n%v", filename, err)
-		}
-		defer inFile.Close()
+
+	inFile, err = os.Open(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to open %s\n%v", filename, err)
 	}
+	defer inFile.Close()
+
 	bytes, err := ioutil.ReadAll(inFile)
 	if err != nil {
 		err = fmt.Errorf("read failed for %s\n%v", filename, err)
 		return "", err
 	}
+
 	return string(bytes), nil
 }
 
 func openOutFile(filename string) (out *os.File, err error) {
-	if filename == "-" {
-		return os.Stdout, nil
-	}
 	return os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 }
