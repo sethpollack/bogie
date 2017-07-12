@@ -7,6 +7,8 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+
+	"go.mozilla.org/sops/decrypt"
 )
 
 func processInputDir(envfile, input, output string, b *Bogie) error {
@@ -47,17 +49,17 @@ func processInputDir(envfile, input, output string, b *Bogie) error {
 				return err
 			}
 
-			inValues, err := readInput(path.Dir(nextInPath) + "/values.yaml")
+			inValues, err := decrypt.File(path.Dir(nextInPath)+"/values.yaml", "yaml")
 			if err != nil {
 				return err
 			}
 
-			inEnv, err := readInput(b.inputDir + "/" + envfile)
+			inEnv, err := decrypt.File(b.inputDir+"/"+envfile, "yaml")
 			if err != nil {
 				return err
 			}
 
-			if err := renderTemplate(b, inString, inValues, inEnv, nextOutPath); err != nil {
+			if err := renderTemplate(b, inString, string(inValues), string(inEnv), nextOutPath); err != nil {
 				return err
 			}
 		}

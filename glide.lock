@@ -1,5 +1,5 @@
-hash: 2cd4403235d095e7bb8a5665def87cb06bfeed273ae9638946d247790fd9688e
-updated: 2017-07-10T01:26:22.796211886Z
+hash: 60eb738270eb441ea84995969cf8230bba45324969e8b0b5b679d5869ca04f65
+updated: 2017-07-12T13:18:16.568626866Z
 imports:
 - name: github.com/aokoli/goutils
   version: 3391d3790d23d03408670993e957e8f408993c34
@@ -31,11 +31,15 @@ imports:
   - private/protocol/rest
   - private/protocol/xml/xmlutil
   - service/ecr
+  - service/kms
+  - service/kms/kmsiface
   - service/sts
 - name: github.com/BurntSushi/toml
   version: b26d9c308763d68093482582cea63d69be07a0f0
 - name: github.com/go-ini/ini
   version: 3d73f4b845efdf9989fffd4b4e562727744a34ba
+- name: github.com/howeyc/gopass
+  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/huandu/xstrings
   version: 3959339b333561bf62a38b424fd41517c2c90f40
 - name: github.com/imdario/mergo
@@ -48,21 +52,46 @@ imports:
   version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/sprig
   version: 9526be0327b26ad31aa70296a7b10704883976d5
+- name: github.com/mozilla-services/yaml
+  version: d8ecb20829d1db648c36e8c558b1c06b2eb74e36
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/spf13/cobra
-  version: 8c6fa02d2225de0f9bdcb7ca912556f68d172d8c
+  version: c46add8a652801b61513ad36c56759f302fbb028
 - name: github.com/spf13/pflag
   version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/ugorji/go
   version: 5efa3251c7f7d05e5d9704a69a984ec9f1386a40
   subpackages:
   - codec
-- name: golang.org/x/crypto
-  version: 08a7dbd3d99261d9ae86ef1b3b8bdb0382fb82cd
+- name: go.mozilla.org/gopgagent
+  version: da4f24003cbec8ef26fdd0761e40eab273a02832
+- name: go.mozilla.org/sops
+  version: d763bac6a4cc83b82b6bb0ac42f06491bc42dead
   subpackages:
+  - aes
+  - decrypt
+  - json
+  - kms
+  - pgp
+  - yaml
+- name: golang.org/x/crypto
+  version: dd85ac7e6a88fc6ca420478e934de5f1a42dd3c6
+  subpackages:
+  - cast5
+  - openpgp
+  - openpgp/armor
+  - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
   - pbkdf2
   - scrypt
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: abf9c25f54453410d0c6668e519582a9e1115027
+  subpackages:
+  - unix
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 1be3d31502d6eabc0dd7ce5b0daab022e14a5538
 testImports: []

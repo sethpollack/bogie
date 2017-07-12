@@ -13,3 +13,7 @@ import:
   version: ~1.10.8
   subpackages:
   - aws
+- package: go.mozilla.org/sops
+  version: ~2.0.9
+  subpackages:
+  - decrypt
