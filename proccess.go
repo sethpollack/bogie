@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -43,7 +42,6 @@ func proccessApplication(input, output, values, envfile string, b *Bogie) error 
 		nextInPath := filepath.Join(input, entry.Name())
 		nextOutPath := filepath.Join(output, entry.Name())
 
-		log.Printf("checking ignore for %s", entry.Name())
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
