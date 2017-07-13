@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -57,14 +58,24 @@ func proccessApplication(input, output, values, envfile string, b *Bogie) error 
 				return err
 			}
 
-			inValues, err := decrypt.File(values, "yaml")
-			if err != nil {
-				return err
+			var inValues []byte
+			if values != "" {
+				inValues, err = decrypt.File(values, "yaml")
+				if err != nil {
+					return err
+				}
+			} else {
+				log.Printf("No values found for template (%v)\n", nextInPath)
 			}
 
-			inEnv, err := decrypt.File(envfile, "yaml")
-			if err != nil {
-				return err
+			var inEnv []byte
+			if values != "" {
+				inEnv, err = decrypt.File(envfile, "yaml")
+				if err != nil {
+					return err
+				}
+			} else {
+				log.Printf("No env_file found for template (%v)\n", nextInPath)
 			}
 
 			if err := renderTemplate(b, inString, string(inValues), string(inEnv), nextOutPath); err != nil {
