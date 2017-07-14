@@ -35,22 +35,25 @@ type Bogie struct {
 
 func NewBogie(o *BogieOpts) *Bogie {
 	b := &Bogie{
-		EnvFile: o.envFile,
-		OutFile: o.outFile,
-		LDelim:  o.lDelim,
-		RDelim:  o.rDelim,
+		EnvFile:     o.envFile,
+		OutFile:     o.outFile,
+		LDelim:      o.lDelim,
+		RDelim:      o.rDelim,
+		IgnoreRegex: o.ignoreRegex,
 	}
 
-	if o.templates != "" && o.values != "" {
+	if o.templatesFile != "" && o.valuesFile != "" {
 		b.Applications = append(b.Applications, &Application{
-			Templates: o.templates,
-			Values:    o.values,
+			Templates: o.templatesFile,
+			Values:    o.valuesFile,
 		})
 	}
 
-	err := parseManifest(o.manifest, b)
-	if err != nil {
-		log.Fatalf("error parsing manifest file %v\n", err)
+	if o.manifest != "" {
+		err := parseManifest(o.manifest, b)
+		if err != nil {
+			log.Fatalf("error parsing manifest file %v\n", err)
+		}
 	}
 
 	return b
@@ -98,7 +101,7 @@ func parseManifest(manifest string, b *Bogie) error {
 func runTemplate(o *BogieOpts) error {
 	b := NewBogie(o)
 
-	if err := os.Mkdir(path.Dir(b.OutFile), os.FileMode(0777)); err != nil {
+	if err := os.MkdirAll(path.Dir(b.OutFile), os.FileMode(0777)); err != nil {
 		return err
 	}
 
