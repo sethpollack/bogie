@@ -69,7 +69,7 @@ func proccessApplication(input, output, values, envfile string, b *Bogie) error 
 			}
 
 			var inEnv []byte
-			if values != "" {
+			if envfile != "" {
 				inEnv, err = decrypt.File(envfile, "yaml")
 				if err != nil {
 					return err
