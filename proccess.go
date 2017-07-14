@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,21 +12,21 @@ import (
 	"go.mozilla.org/sops/decrypt"
 )
 
-func proccessApplications(b *Bogie) error {
+func proccessApplications(b *Bogie, outFile io.Writer) error {
 	for _, app := range b.Applications {
-		err := proccessApplication(app.Templates, b.OutDir+"/"+app.Name, app.Values, b.EnvFile, b)
+		err := proccessApplication(app.Templates, app.Values, b.EnvFile, outFile, b)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func proccessApplication(input, output, values, envfile string, b *Bogie) error {
+func proccessApplication(input, values, envfile string, outFile io.Writer, b *Bogie) error {
 	input = filepath.Clean(input)
-	output = filepath.Clean(output)
 
-	fi, err := os.Stat(input)
+	_, err := os.Stat(input)
 	if err != nil {
 		return err
 	}
@@ -35,20 +36,15 @@ func proccessApplication(input, output, values, envfile string, b *Bogie) error 
 		return err
 	}
 
-	if err = os.MkdirAll(output, fi.Mode()); err != nil {
-		return err
-	}
-
 	for _, entry := range entries {
 		nextInPath := filepath.Join(input, entry.Name())
-		nextOutPath := filepath.Join(output, entry.Name())
 
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
 
 		if entry.IsDir() {
-			err := proccessApplication(nextInPath, nextOutPath, values, envfile, b)
+			err := proccessApplication(nextInPath, values, envfile, outFile, b)
 			if err != nil {
 				return err
 			}
@@ -78,7 +74,9 @@ func proccessApplication(input, output, values, envfile string, b *Bogie) error 
 				log.Printf("No env_file found for template (%v)\n", nextInPath)
 			}
 
-			if err := renderTemplate(b, inString, string(inValues), string(inEnv), nextOutPath); err != nil {
+			fmt.Fprint(outFile, "---\n")
+
+			if err := renderTemplate(b, inString, string(inValues), string(inEnv), outFile); err != nil {
 				return err
 			}
 		}

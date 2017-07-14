@@ -3,6 +3,8 @@ package main
 import (
 	"io"
 	"log"
+	"os"
+	"path"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -24,7 +26,7 @@ type Context struct {
 
 type Bogie struct {
 	EnvFile      string `yaml:"env_file"`
-	OutDir       string `yaml:"out_dir"`
+	OutFile      string `yaml:"out_file"`
 	LDelim       string
 	RDelim       string
 	IgnoreRegex  string `yaml:"ignore_regex"`
@@ -34,7 +36,7 @@ type Bogie struct {
 func NewBogie(o *BogieOpts) *Bogie {
 	b := &Bogie{
 		EnvFile: o.envFile,
-		OutDir:  o.outDir,
+		OutFile: o.outFile,
 		LDelim:  o.lDelim,
 		RDelim:  o.rDelim,
 	}
@@ -50,6 +52,7 @@ func NewBogie(o *BogieOpts) *Bogie {
 	if err != nil {
 		log.Fatalf("error parsing manifest file %v\n", err)
 	}
+
 	return b
 }
 
@@ -60,6 +63,7 @@ func createTemplate(c *Context, b *Bogie) *template.Template {
 			Funcs(initFuncs(c, b)).
 			Option("missingkey=error")
 	}
+
 	return temp
 }
 
@@ -71,6 +75,7 @@ func RunTemplate(c *Context, b *Bogie, text string, out io.Writer) {
 	if err != nil {
 		log.Fatalf("Line %q: %v\n", text, err)
 	}
+
 	if err := tmpl.Execute(out, c); err != nil {
 		panic(err)
 	}
@@ -92,19 +97,24 @@ func parseManifest(manifest string, b *Bogie) error {
 
 func runTemplate(o *BogieOpts) error {
 	b := NewBogie(o)
-	return proccessApplications(b)
-}
 
-func renderTemplate(b *Bogie, inString, inValues, inEnv, outPath string) error {
-	outFile, err := openOutFile(outPath)
+	if err := os.Mkdir(path.Dir(b.OutFile), os.FileMode(0777)); err != nil {
+		return err
+	}
+
+	outFile, err := openOutFile(b.OutFile)
 	if err != nil {
 		return err
 	}
 	defer outFile.Close()
 
+	return proccessApplications(b, outFile)
+}
+
+func renderTemplate(b *Bogie, inString, inValues, inEnv string, outFile io.Writer) error {
 	c := &Context{}
 
-	err = yaml.Unmarshal([]byte(inValues), &c.Values)
+	err := yaml.Unmarshal([]byte(inValues), &c.Values)
 	if err != nil {
 		return err
 	}
@@ -115,5 +125,6 @@ func renderTemplate(b *Bogie, inString, inValues, inEnv, outPath string) error {
 	}
 
 	RunTemplate(c, b, inString, outFile)
+
 	return nil
 }

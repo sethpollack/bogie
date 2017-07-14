@@ -12,7 +12,7 @@ type BogieOpts struct {
 	rDelim    string
 	manifest  string
 	templates string
-	outDir    string
+	outFile   string
 	envFile   string
 	values    string
 }
@@ -41,8 +41,8 @@ func initFlags(command *cobra.Command) {
 	command.Flags().StringVar(&opts.manifest, "manifest", "", "template manifest")
 
 	command.Flags().StringVar(&opts.envFile, "env-file", "", "global values file - required when not using a manifest.")
+	command.Flags().StringVar(&opts.outFile, "output-file", "release.yaml", "`directory` to store the processed templates - required when not using a manifest.")
 	command.Flags().StringVar(&opts.values, "values", "", "values file - required when not using a manifest.")
-	command.Flags().StringVar(&opts.outDir, "output-dir", "releases", "`directory` to store the processed templates - required when not using a manifest.")
 }
 
 func main() {
