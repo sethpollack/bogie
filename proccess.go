@@ -74,7 +74,7 @@ func proccessApplication(input, values, envfile string, outFile io.Writer, b *Bo
 				log.Printf("No env_file found for template (%v)\n", nextInPath)
 			}
 
-			fmt.Fprint(outFile, "---\n")
+			fmt.Fprint(outFile, "\n---\n")
 
 			if err := renderTemplate(b, inString, string(inValues), string(inEnv), outFile); err != nil {
 				return err
