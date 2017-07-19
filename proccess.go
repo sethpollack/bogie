@@ -95,8 +95,6 @@ func proccessApplication(input string, c *Context, b *Bogie) ([]*ApplicationOutp
 		nextInPath := filepath.Join(input, entry.Name())
 		nextOutPath := filepath.Join(b.OutDir, input, entry.Name())
 
-		fmt.Printf("nextInPath = %s\nnextOutPath = %s\n", nextInPath, nextOutPath)
-
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
