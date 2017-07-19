@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,10 +15,16 @@ import (
 
 var temp *template.Template
 
-type Application struct {
+type ApplicationInput struct {
 	Name      string
 	Templates string
 	Values    string
+}
+
+type ApplicationOutput struct {
+	OutPath  string
+	Template string
+	Context  *Context
 }
 
 type Context struct {
@@ -25,26 +33,30 @@ type Context struct {
 }
 
 type Bogie struct {
-	EnvFile      string `yaml:"env_file"`
-	OutFile      string `yaml:"out_file"`
-	LDelim       string
-	RDelim       string
-	IgnoreRegex  string `yaml:"ignore_regex"`
-	Applications []*Application
+	EnvFile           string `yaml:"env_file"`
+	OutFile           string `yaml:"out_file"`
+	OutDir            string `yaml:"out_dir"`
+	OutFormat         string `yaml: "out_format"`
+	LDelim            string
+	RDelim            string
+	IgnoreRegex       string              `yaml:"ignore_regex"`
+	ApplicationInputs []*ApplicationInput `yaml:"applications"`
 }
 
 func NewBogie(o *BogieOpts) *Bogie {
 	b := &Bogie{
 		EnvFile:     o.envFile,
+		OutDir:      o.outPath,
 		OutFile:     o.outFile,
+		OutFormat:   o.outFormat,
 		LDelim:      o.lDelim,
 		RDelim:      o.rDelim,
 		IgnoreRegex: o.ignoreRegex,
 	}
 
-	if o.templatesFile != "" && o.valuesFile != "" {
-		b.Applications = append(b.Applications, &Application{
-			Templates: o.templatesFile,
+	if o.templatesPath != "" && o.valuesFile != "" {
+		b.ApplicationInputs = append(b.ApplicationInputs, &ApplicationInput{
+			Templates: o.templatesPath,
 			Values:    o.valuesFile,
 		})
 	}
@@ -100,34 +112,73 @@ func parseManifest(manifest string, b *Bogie) error {
 
 func runTemplate(o *BogieOpts) error {
 	b := NewBogie(o)
-
-	if err := os.MkdirAll(path.Dir(b.OutFile), os.FileMode(0777)); err != nil {
-		return err
-	}
-
-	outFile, err := openOutFile(b.OutFile)
+	apps, err := proccessApplications(b)
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
 
-	return proccessApplications(b, outFile)
+	switch b.OutFormat {
+	case "dir":
+		return renderTemplateToDir(b, apps)
+	case "file":
+		return renderTemplateToFile(b, apps)
+	default:
+		return renderTemplateToSTDOUT(b, apps)
+	}
 }
 
-func renderTemplate(b *Bogie, inString, inValues, inEnv string, outFile io.Writer) error {
-	c := &Context{}
+func renderTemplateToDir(b *Bogie, apps []*ApplicationOutput) error {
+	for _, app := range apps {
 
-	err := yaml.Unmarshal([]byte(inValues), &c.Values)
-	if err != nil {
-		return err
+		if err := os.MkdirAll(path.Dir(app.OutPath), os.FileMode(0777)); err != nil {
+			return err
+		}
+
+		f, err := openOutFile(app.OutPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		w := bufio.NewWriter(f)
+		defer w.Flush()
+
+		RunTemplate(app.Context, b, app.Template, w)
 	}
-
-	err = yaml.Unmarshal([]byte(inEnv), &c.Env)
-	if err != nil {
-		return err
-	}
-
-	RunTemplate(c, b, inString, outFile)
 
 	return nil
+}
+
+func renderTemplateToFile(b *Bogie, apps []*ApplicationOutput) error {
+	if err := os.MkdirAll(b.OutDir, os.FileMode(0777)); err != nil {
+		return err
+	}
+
+	f, err := openOutFile(fmt.Sprintf("%s/%s", b.OutDir, b.OutFile))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	defer w.Flush()
+
+	for _, app := range apps {
+		fmt.Fprint(w, "---\n")
+		RunTemplate(app.Context, b, app.Template, w)
+	}
+
+	return nil
+}
+
+func renderTemplateToSTDOUT(b *Bogie, apps []*ApplicationOutput) error {
+	for _, app := range apps {
+		RunTemplate(app.Context, b, app.Template, os.Stdout)
+	}
+
+	return nil
+}
+
+func openOutFile(filename string) (out *os.File, err error) {
+	return os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 }

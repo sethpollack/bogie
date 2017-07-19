@@ -9,14 +9,19 @@ import (
 )
 
 type BogieOpts struct {
-	lDelim        string
-	rDelim        string
-	manifest      string
+	lDelim string
+	rDelim string
+
+	manifest  string
+	outFormat string
+
+	//flags when not using manifest
 	templates     string
+	outPath       string
 	outFile       string
 	envFile       string
 	valuesFile    string
-	templatesFile string
+	templatesPath string
 	ignoreRegex   string
 }
 
@@ -28,8 +33,8 @@ func validateOpts(cmd *cobra.Command, args []string) error {
 			return errors.New("--output-file is required when not using the manifest file")
 		}
 
-		if !cmd.Flag("templates-file").Changed {
-			return errors.New("--templates-file is required when not using the manifest file")
+		if !cmd.Flag("templates-dir").Changed {
+			return errors.New("--templates-dir is required when not using the manifest file")
 		}
 	}
 	return nil
@@ -50,12 +55,19 @@ func newBogieCmd() *cobra.Command {
 func initFlags(command *cobra.Command) {
 	command.Flags().StringVar(&opts.lDelim, "left-delim", "{{{", "override the default left-`delimiter`")
 	command.Flags().StringVar(&opts.rDelim, "right-delim", "}}}", "override the default right-`delimiter`")
+
 	command.Flags().StringVar(&opts.manifest, "manifest", "", "template manifest")
 
+	command.Flags().StringVar(&opts.outFormat, "out", "dir", "output format")
+
+	command.Flags().StringVar(&opts.outPath, "output-dir", "releases", "`dir` to store the processed templates - required when not using a manifest.")
 	command.Flags().StringVar(&opts.outFile, "output-file", "release.yaml", "`file` to store the processed templates - required when not using a manifest.")
-	command.Flags().StringVar(&opts.templatesFile, "templates-file", "", "templates dir - required when not using a manifest.")
+
+	command.Flags().StringVar(&opts.templatesPath, "templates-dir", "", "templates dir - required when not using a manifest.")
+
 	command.Flags().StringVar(&opts.envFile, "env-file", "", "global values file - used when not using a manifest (optional).")
 	command.Flags().StringVar(&opts.valuesFile, "values-file", "", "values file - used when not using a manifest (optional).")
+
 	command.Flags().StringVar(&opts.ignoreRegex, "ignore-regex", "((.+).md|(.+)?values.yaml)", "regex to skip files from being copied over - used when not using a manifest (optional).")
 }
 

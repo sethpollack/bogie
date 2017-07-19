@@ -14,6 +14,8 @@ func initFuncs(c *Context, b *Bogie) template.FuncMap {
 		"latestImage":  ecr.client.LatestImage,
 		"readDir":      file.ReadDir(c, b),
 		"readFile":     file.ReadFile(c, b),
+		"decryptFile":  file.DecryptFile(c, b),
+		"decryptDir":   file.DecryptDir(c, b),
 		"getenv":       env.Getenv,
 		"json":         typeconv.JSON,
 		"jsonArray":    typeconv.JSONArray,

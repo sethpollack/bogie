@@ -2,86 +2,135 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"go.mozilla.org/sops/decrypt"
 )
 
-func proccessApplications(b *Bogie, outFile io.Writer) error {
-	for _, app := range b.Applications {
-		err := proccessApplication(app.Templates, app.Values, b.EnvFile, outFile, b)
+func proccessApplications(b *Bogie) ([]*ApplicationOutput, error) {
+	appOutputs := []*ApplicationOutput{}
+
+	c, err := genContext(b.EnvFile)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, app := range b.ApplicationInputs {
+		c, err := setValueContext(app.Values, c)
 		if err != nil {
-			return err
+			return nil, err
+		}
+
+		apps, err := proccessApplication(app.Templates, c, b)
+		if err != nil {
+			return nil, err
+		}
+
+		appOutputs = append(appOutputs, apps...)
+	}
+
+	return appOutputs, nil
+}
+
+func setValueContext(values string, c *Context) (*Context, error) {
+	nc := &Context{
+		Env: c.Env,
+	}
+
+	if values != "" {
+		inValues, err := decrypt.File(values, "yaml")
+		if err != nil {
+			return nil, err
+		}
+
+		err = yaml.Unmarshal([]byte(inValues), &nc.Values)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return nc, nil
 }
 
-func proccessApplication(input, values, envfile string, outFile io.Writer, b *Bogie) error {
+func genContext(envfile string) (*Context, error) {
+	c := &Context{}
+
+	if envfile != "" {
+		inEnv, err := decrypt.File(envfile, "yaml")
+		if err != nil {
+			return nil, err
+		}
+
+		err = yaml.Unmarshal([]byte(inEnv), &c.Env)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+func proccessApplication(input string, c *Context, b *Bogie) ([]*ApplicationOutput, error) {
 	input = filepath.Clean(input)
 
 	_, err := os.Stat(input)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	entries, err := ioutil.ReadDir(input)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	appOutputs := []*ApplicationOutput{}
 
 	for _, entry := range entries {
 		nextInPath := filepath.Join(input, entry.Name())
+		nextOutPath := filepath.Join(b.OutDir, input, entry.Name())
+
+		fmt.Printf("nextInPath = %s\nnextOutPath = %s\n", nextInPath, nextOutPath)
 
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
 
 		if entry.IsDir() {
-			err := proccessApplication(nextInPath, values, envfile, outFile, b)
+			apps, err := proccessApplication(nextInPath, c, b)
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			appOutputs = append(appOutputs, apps...)
 		} else {
 			inString, err := readInput(nextInPath)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			var inValues []byte
-			if values != "" {
-				inValues, err = decrypt.File(values, "yaml")
-				if err != nil {
-					return err
-				}
-			} else {
+			if c.Values == nil {
 				log.Printf("No values found for template (%v)\n", nextInPath)
 			}
 
-			var inEnv []byte
-			if envfile != "" {
-				inEnv, err = decrypt.File(envfile, "yaml")
-				if err != nil {
-					return err
-				}
-			} else {
+			if c.Env == nil {
 				log.Printf("No env_file found for template (%v)\n", nextInPath)
 			}
 
-			fmt.Fprint(outFile, "\n---\n")
-
-			if err := renderTemplate(b, inString, string(inValues), string(inEnv), outFile); err != nil {
-				return err
-			}
+			appOutputs = append(appOutputs, &ApplicationOutput{
+				OutPath:  nextOutPath,
+				Template: inString,
+				Context:  c,
+			})
 		}
 	}
-	return nil
+
+	return appOutputs, nil
 }
 
 func readInput(filename string) (string, error) {
@@ -101,8 +150,4 @@ func readInput(filename string) (string, error) {
 	}
 
 	return string(bytes), nil
-}
-
-func openOutFile(filename string) (out *os.File, err error) {
-	return os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 }
