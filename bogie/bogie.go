@@ -10,22 +10,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	yaml "gopkg.in/yaml.v2"
 )
-
-type BogieOpts struct {
-	LDelim        string
-	RDelim        string
-	Manifest      string
-	OutFormat     string
-	Templates     string
-	OutPath       string
-	OutFile       string
-	EnvFile       string
-	ValuesFile    string
-	TemplatesPath string
-	IgnoreRegex   string
-}
 
 type ApplicationInput struct {
 	Templates string
@@ -54,8 +39,7 @@ type Bogie struct {
 	ApplicationInputs []*ApplicationInput `yaml:"applications"`
 }
 
-func RunBogie(o *BogieOpts) error {
-	b := newBogie(o)
+func RunBogie(b *Bogie) error {
 	apps, err := proccessApplications(b)
 	if err != nil {
 		return err
@@ -86,48 +70,6 @@ func runTemplate(c *context, b *Bogie, text string, out io.Writer) {
 	if err := tmpl.Execute(out, c); err != nil {
 		panic(err)
 	}
-}
-
-func newBogie(o *BogieOpts) *Bogie {
-	b := &Bogie{
-		EnvFile:     o.EnvFile,
-		OutPath:     o.OutPath,
-		OutFile:     o.OutFile,
-		OutFormat:   o.OutFormat,
-		LDelim:      o.LDelim,
-		RDelim:      o.RDelim,
-		IgnoreRegex: o.IgnoreRegex,
-	}
-
-	if o.TemplatesPath != "" && o.ValuesFile != "" {
-		b.ApplicationInputs = append(b.ApplicationInputs, &ApplicationInput{
-			Templates: o.TemplatesPath,
-			Values:    o.ValuesFile,
-		})
-	}
-
-	if o.Manifest != "" {
-		err := parseManifest(o.Manifest, b)
-		if err != nil {
-			log.Fatalf("error parsing manifest file %v\n", err)
-		}
-	}
-
-	return b
-}
-
-func parseManifest(manifest string, b *Bogie) error {
-	output, err := readInput(manifest)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal([]byte(output), b)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func renderTemplateToDir(b *Bogie, apps []*applicationOutput) error {

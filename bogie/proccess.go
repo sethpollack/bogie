@@ -1,12 +1,13 @@
 package bogie
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/sethpollack/bogie/util"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -107,7 +108,7 @@ func proccessApplication(input string, c *context, b *Bogie) ([]*applicationOutp
 
 			appOutputs = append(appOutputs, apps...)
 		} else {
-			inString, err := readInput(nextInPath)
+			inString, err := util.ReadInput(nextInPath)
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,4 @@ func proccessApplication(input string, c *context, b *Bogie) ([]*applicationOutp
 	}
 
 	return appOutputs, nil
-}
-
-func readInput(filename string) (string, error) {
-	var err error
-	var inFile *os.File
-
-	inFile, err = os.Open(filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to open %s\n%v", filename, err)
-	}
-	defer inFile.Close()
-
-	bytes, err := ioutil.ReadAll(inFile)
-	if err != nil {
-		err = fmt.Errorf("read failed for %s\n%v", filename, err)
-		return "", err
-	}
-
-	return string(bytes), nil
 }
