@@ -1,4 +1,4 @@
-package main
+package bogie
 
 import (
 	"fmt"
@@ -13,8 +13,8 @@ import (
 	"go.mozilla.org/sops/decrypt"
 )
 
-func proccessApplications(b *Bogie) ([]*ApplicationOutput, error) {
-	appOutputs := []*ApplicationOutput{}
+func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
+	appOutputs := []*applicationOutput{}
 
 	c, err := genContext(b.EnvFile)
 	if err != nil {
@@ -38,8 +38,8 @@ func proccessApplications(b *Bogie) ([]*ApplicationOutput, error) {
 	return appOutputs, nil
 }
 
-func setValueContext(values string, c *Context) (*Context, error) {
-	nc := &Context{
+func setValueContext(values string, c *context) (*context, error) {
+	nc := &context{
 		Env: c.Env,
 	}
 
@@ -58,8 +58,8 @@ func setValueContext(values string, c *Context) (*Context, error) {
 	return nc, nil
 }
 
-func genContext(envfile string) (*Context, error) {
-	c := &Context{}
+func genContext(envfile string) (*context, error) {
+	c := &context{}
 
 	if envfile != "" {
 		inEnv, err := decrypt.File(envfile, "yaml")
@@ -76,7 +76,7 @@ func genContext(envfile string) (*Context, error) {
 	return c, nil
 }
 
-func proccessApplication(input string, c *Context, b *Bogie) ([]*ApplicationOutput, error) {
+func proccessApplication(input string, c *context, b *Bogie) ([]*applicationOutput, error) {
 	input = filepath.Clean(input)
 
 	_, err := os.Stat(input)
@@ -89,11 +89,11 @@ func proccessApplication(input string, c *Context, b *Bogie) ([]*ApplicationOutp
 		return nil, err
 	}
 
-	appOutputs := []*ApplicationOutput{}
+	appOutputs := []*applicationOutput{}
 
 	for _, entry := range entries {
 		nextInPath := filepath.Join(input, entry.Name())
-		nextOutPath := filepath.Join(b.OutDir, input, entry.Name())
+		nextOutPath := filepath.Join(b.OutPath, input, entry.Name())
 
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
@@ -120,10 +120,10 @@ func proccessApplication(input string, c *Context, b *Bogie) ([]*ApplicationOutp
 				log.Printf("No env_file found for template (%v)\n", nextInPath)
 			}
 
-			appOutputs = append(appOutputs, &ApplicationOutput{
-				OutPath:  nextOutPath,
-				Template: inString,
-				Context:  c,
+			appOutputs = append(appOutputs, &applicationOutput{
+				outPath:  nextOutPath,
+				template: inString,
+				context:  c,
 			})
 		}
 	}

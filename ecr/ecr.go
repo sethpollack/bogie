@@ -1,9 +1,8 @@
-package main
+package ecr
 
 import (
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,16 +10,35 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-var describerClient EcrDescriber
-
-type EcrDescriber interface {
-	DescribeImages(input *ecr.DescribeImagesInput) (*ecr.DescribeImagesOutput, error)
+func LatestImage(repo, matcher string) string {
+	e := newEcr()
+	output := e.describeImages(repo)
+	if output == nil {
+		log.Fatalf("No results found for %s", repo)
+	}
+	for _, id := range output.ImageDetails {
+		if exists := containsMatcher(id.ImageTags, matcher); exists {
+			for _, tag := range id.ImageTags {
+				if *tag != matcher {
+					return *tag
+				}
+			}
+		}
+	}
+	log.Fatalf("No latest tag found for %s", repo)
+	return ""
 }
 
 type Ecr struct {
 	describer func() EcrDescriber
 	cache     map[string]interface{}
 }
+
+type EcrDescriber interface {
+	DescribeImages(input *ecr.DescribeImagesInput) (*ecr.DescribeImagesOutput, error)
+}
+
+var describerClient EcrDescriber
 
 func newEcr() *Ecr {
 	return &Ecr{
@@ -60,24 +78,6 @@ func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput) {
 	return
 }
 
-func (e *Ecr) LatestImage(repo, matcher string) string {
-	output := e.describeImages(repo)
-	if output == nil {
-		log.Fatalf("No results found for %s", repo)
-	}
-	for _, id := range output.ImageDetails {
-		if exists := containsMatcher(id.ImageTags, matcher); exists {
-			for _, tag := range id.ImageTags {
-				if *tag != matcher {
-					return *tag
-				}
-			}
-		}
-	}
-	log.Fatalf("No latest tag found for %s", repo)
-	return ""
-}
-
 func containsMatcher(tags []*string, matcher string) bool {
 	for _, tag := range tags {
 		if *tag == matcher {
@@ -85,15 +85,4 @@ func containsMatcher(tags []*string, matcher string) bool {
 		}
 	}
 	return false
-}
-
-type EcrInit struct {
-	client  *Ecr
-	ecrInit sync.Once
-}
-
-func (e *EcrInit) initEcr() {
-	if e.client == nil {
-		e.client = newEcr()
-	}
 }
