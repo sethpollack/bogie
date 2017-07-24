@@ -24,8 +24,8 @@ type applicationOutput struct {
 }
 
 type context struct {
-	Values *map[interface{}]interface{}
-	Env    *map[interface{}]interface{}
+	Values map[interface{}]interface{}
+	Env    map[interface{}]interface{}
 }
 
 type Bogie struct {
@@ -74,8 +74,7 @@ func runTemplate(c *context, b *Bogie, text string, out io.Writer) {
 
 func renderTemplateToDir(b *Bogie, apps []*applicationOutput) error {
 	for _, app := range apps {
-
-		if err := os.MkdirAll(path.Dir(app.outPath), os.FileMode(0777)); err != nil {
+		if err := os.MkdirAll(path.Dir(app.outPath), os.FileMode(0744)); err != nil {
 			return err
 		}
 
@@ -95,7 +94,7 @@ func renderTemplateToDir(b *Bogie, apps []*applicationOutput) error {
 }
 
 func renderTemplateToFile(b *Bogie, apps []*applicationOutput) error {
-	if err := os.MkdirAll(b.OutPath, os.FileMode(0777)); err != nil {
+	if err := os.MkdirAll(b.OutPath, os.FileMode(0744)); err != nil {
 		return err
 	}
 

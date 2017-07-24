@@ -7,10 +7,7 @@ import (
 )
 
 func ReadInput(filename string) (string, error) {
-	var err error
-	var inFile *os.File
-
-	inFile, err = os.Open(filename)
+	inFile, err := os.Open(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to open %s\n%v", filename, err)
 	}
