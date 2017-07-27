@@ -7,10 +7,8 @@ import (
 	"regexp"
 
 	"github.com/sethpollack/bogie/util"
-
-	yaml "gopkg.in/yaml.v2"
-
 	"go.mozilla.org/sops/decrypt"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
@@ -31,7 +29,9 @@ func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
 			return nil, err
 		}
 
-		err = proccessApplication(&appOutputs, app.Templates, c, b)
+		releaseDir := filepath.Join(b.OutPath, app.Name)
+
+		err = proccessApplication(&appOutputs, app.Templates, releaseDir, c, b)
 		if err != nil {
 			return nil, err
 		}
@@ -74,24 +74,27 @@ func genContext(envfile string) (context, error) {
 	return c, nil
 }
 
-func proccessApplication(appOutputs *[]*applicationOutput, input string, c *context, b *Bogie) error {
+func proccessApplication(appOutputs *[]*applicationOutput, input, output string, c *context, b *Bogie) error {
 	input = filepath.Clean(input)
+	output = filepath.Clean(output)
 
 	entries, err := ioutil.ReadDir(input)
 	if err != nil {
 		return err
 	}
 
-	for _, entry := range entries {
-		nextInPath := filepath.Join(input, entry.Name())
-		nextOutPath := filepath.Join(b.OutPath, input, entry.Name())
+	helper, _ := util.ReadInput(input + "/_helpers.tmpl")
 
+	for _, entry := range entries {
 		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
 			continue
 		}
 
+		nextInPath := filepath.Join(input, entry.Name())
+		nextOutPath := filepath.Join(output, entry.Name())
+
 		if entry.IsDir() {
-			err := proccessApplication(appOutputs, nextInPath, c, b)
+			err := proccessApplication(appOutputs, nextInPath, nextOutPath, c, b)
 			if err != nil {
 				return err
 			}
@@ -107,7 +110,7 @@ func proccessApplication(appOutputs *[]*applicationOutput, input string, c *cont
 
 			*appOutputs = append(*appOutputs, &applicationOutput{
 				outPath:  nextOutPath,
-				template: inString,
+				template: helper + inString,
 				context:  c,
 			})
 		}

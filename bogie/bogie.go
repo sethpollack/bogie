@@ -13,6 +13,7 @@ import (
 )
 
 type ApplicationInput struct {
+	Name      string
 	Templates string
 	Values    string
 }
