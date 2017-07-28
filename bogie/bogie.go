@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/sethpollack/bogie/ignore"
 )
 
 type ApplicationInput struct {
@@ -36,8 +37,8 @@ type Bogie struct {
 	OutFile           string              `yaml:"out_file"`
 	OutPath           string              `yaml:"out_path"`
 	OutFormat         string              `yaml:"out_format"`
-	IgnoreRegex       string              `yaml:"ignore_regex"`
 	ApplicationInputs []*ApplicationInput `yaml:"applications"`
+	Rules             *ignore.Rules
 }
 
 func RunBogie(b *Bogie) error {

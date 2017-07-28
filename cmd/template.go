@@ -7,6 +7,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/sethpollack/bogie/bogie"
+	"github.com/sethpollack/bogie/ignore"
 	"github.com/sethpollack/bogie/util"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +23,7 @@ type bogieOpts struct {
 	envFile       string
 	valuesFile    string
 	templatesPath string
-	ignoreRegex   string
+	ignoreFile    string
 }
 
 var o bogieOpts
@@ -43,7 +44,7 @@ func init() {
 	templateCmd.PersistentFlags().StringVarP(&o.outPath, "output-path", "p", "releases", "`dir` to store the processed templates.")
 	templateCmd.PersistentFlags().StringVarP(&o.outFile, "output-file", "f", "release.yaml", "`file` to store the processed templates.")
 
-	templateCmd.PersistentFlags().StringVarP(&o.ignoreRegex, "ignore-regex", "i", "((.+).md|(.+)?values.yaml)", "regex to skip files from being copied over.")
+	templateCmd.PersistentFlags().StringVarP(&o.ignoreFile, "ignore-file", "i", ".bogieignore", ".bogieignore file")
 }
 
 var template_example = `
@@ -63,7 +64,7 @@ bogie template \
 out_path: releases
 out_file: release.yaml
 env_file: path/to/global/vars/values.yaml
-ignore_regex: (.+)?values.yaml
+ignore_file: .bogieignore
 applications:
 - name: my-templates
   templates: path/to/templates
@@ -91,14 +92,17 @@ var templateCmd = &cobra.Command{
 
 func newBogie(o *bogieOpts) *bogie.Bogie {
 	b := &bogie.Bogie{
-		EnvFile:     o.envFile,
-		OutPath:     o.outPath,
-		OutFile:     o.outFile,
-		OutFormat:   o.outFormat,
-		LDelim:      o.lDelim,
-		RDelim:      o.rDelim,
-		IgnoreRegex: o.ignoreRegex,
+		EnvFile:   o.envFile,
+		OutPath:   o.outPath,
+		OutFile:   o.outFile,
+		OutFormat: o.outFormat,
+		LDelim:    o.lDelim,
+		RDelim:    o.rDelim,
 	}
+
+	r := ignore.Init()
+	r.ParseFile(o.ignoreFile)
+	b.Rules = r
 
 	if o.templatesPath != "" && o.valuesFile != "" {
 		b.ApplicationInputs = []*bogie.ApplicationInput{

@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
-	"regexp"
 
 	"github.com/sethpollack/bogie/util"
 	"go.mozilla.org/sops/decrypt"
@@ -85,8 +84,11 @@ func proccessApplication(appOutputs *[]*applicationOutput, input, output string,
 
 	helper, _ := util.ReadInput(input + "/_helpers.tmpl")
 
+	r := b.Rules.Clone()
+	r.ParseFile(input + "/.bogieignore")
+
 	for _, entry := range entries {
-		if ok, _ := regexp.MatchString(b.IgnoreRegex, entry.Name()); ok {
+		if ok := r.Ignore(entry.Name(), entry.IsDir()); ok {
 			continue
 		}
 
