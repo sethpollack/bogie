@@ -70,7 +70,7 @@ func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput) {
 		var err error
 		output, err = e.describer().DescribeImages(input)
 		if err != nil {
-			log.Panicln(err.Error())
+			log.Fatal(err.Error())
 			return nil
 		}
 		e.cache[repo] = output
