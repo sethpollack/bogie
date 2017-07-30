@@ -4,6 +4,7 @@ import (
 	"io"
 	"text/template"
 
+	"github.com/sethpollack/bogie/crypto"
 	"github.com/sethpollack/bogie/ecr"
 	"github.com/sethpollack/bogie/file"
 	"github.com/sethpollack/bogie/types"
@@ -20,6 +21,7 @@ func initFuncs(c *context, b *Bogie) template.FuncMap {
 		"readFile":    file.ReadFile(f),
 		"decryptFile": file.DecryptFile(f),
 		"decryptDir":  file.DecryptDir(f),
+		"basicAuth":   crypto.BasicAuth,
 		"json":        types.JSON,
 		"jsonArray":   types.JSONArray,
 		"toJSON":      types.ToJSON,
