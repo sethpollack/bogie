@@ -2,99 +2,97 @@ package types
 
 import (
 	"bytes"
-	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ugorji/go/codec"
 	yaml "gopkg.in/yaml.v2"
 )
 
-func unmarshalObj(obj map[string]interface{}, in string, f func([]byte, interface{}) error) map[string]interface{} {
+func unmarshalObj(obj map[string]interface{}, in string, f func([]byte, interface{}) error) (map[string]interface{}, error) {
 	err := f([]byte(in), &obj)
 	if err != nil {
-		log.Fatalf("Unable to unmarshal object %s: %v", in, err)
+		return nil, errors.New(fmt.Sprintf("Unable to unmarshal object %s: %v", in, err))
 	}
-	return obj
+
+	return obj, nil
 }
 
-func unmarshalArray(obj []interface{}, in string, f func([]byte, interface{}) error) []interface{} {
+func unmarshalArray(obj []interface{}, in string, f func([]byte, interface{}) error) ([]interface{}, error) {
 	err := f([]byte(in), &obj)
 	if err != nil {
-		log.Fatalf("Unable to unmarshal array %s: %v", in, err)
+		return nil, errors.New(fmt.Sprintf("Unable to unmarshal array %s: %v", in, err))
 	}
-	return obj
+
+	return obj, nil
 }
 
-func marshalObj(obj interface{}, f func(interface{}) ([]byte, error)) string {
+func marshalObj(obj interface{}, f func(interface{}) ([]byte, error)) (string, error) {
 	b, err := f(obj)
 	if err != nil {
-		log.Fatalf("Unable to marshal object %s: %v", obj, err)
+		return "", errors.New(fmt.Sprintf("Unable to marshal object %s: %v", obj, err))
 	}
 
-	return string(b)
+	return string(b), nil
 }
 
-func toJSONBytes(in interface{}) []byte {
+func toJSONBytes(in interface{}) ([]byte, error) {
 	h := &codec.JsonHandle{}
 	h.Canonical = true
 	buf := new(bytes.Buffer)
 	err := codec.NewEncoder(buf, h).Encode(in)
 	if err != nil {
-		log.Fatalf("Unable to marshal %s: %v", in, err)
+		return []byte{}, errors.New(fmt.Sprintf("Unable to marshal %s: %v", in, err))
 	}
-	return buf.Bytes()
+
+	return buf.Bytes(), nil
 }
 
-func JSON(in string) map[string]interface{} {
+func JSON(in string) (map[string]interface{}, error) {
 	obj := make(map[string]interface{})
 	return unmarshalObj(obj, in, yaml.Unmarshal)
 }
 
-func JSONArray(in string) []interface{} {
+func JSONArray(in string) ([]interface{}, error) {
 	obj := make([]interface{}, 1)
 	return unmarshalArray(obj, in, yaml.Unmarshal)
 }
 
-func ToJSON(in interface{}) string {
-	return string(toJSONBytes(in))
-}
-
-func toJSONPretty(indent string, in interface{}) string {
-	out := new(bytes.Buffer)
-	b := toJSONBytes(in)
-	err := json.Indent(out, b, "", indent)
+func ToJSON(in interface{}) (string, error) {
+	b, err := toJSONBytes(in)
 	if err != nil {
-		log.Fatalf("Unable to indent JSON %s: %v", b, err)
+		return "", err
 	}
 
-	return string(out.Bytes())
+	return string(b), nil
 }
 
-func ToYAML(in interface{}) string {
+func ToYAML(in interface{}) (string, error) {
 	return marshalObj(in, yaml.Marshal)
 }
 
-func YAML(in string) map[string]interface{} {
+func YAML(in string) (map[string]interface{}, error) {
 	obj := make(map[string]interface{})
 	return unmarshalObj(obj, in, yaml.Unmarshal)
 }
 
-func YAMLArray(in string) []interface{} {
+func YAMLArray(in string) ([]interface{}, error) {
 	obj := make([]interface{}, 1)
 	return unmarshalArray(obj, in, yaml.Unmarshal)
 }
 
-func TOML(in string) interface{} {
+func TOML(in string) (interface{}, error) {
 	obj := make(map[string]interface{})
 	return unmarshalObj(obj, in, toml.Unmarshal)
 }
 
-func ToTOML(in interface{}) string {
+func ToTOML(in interface{}) (string, error) {
 	buf := new(bytes.Buffer)
 	err := toml.NewEncoder(buf).Encode(in)
 	if err != nil {
-		log.Fatalf("Unable to marshal %s: %v", in, err)
+		return "", errors.New(fmt.Sprintf("Unable to marshal %s: %v", in, err))
 	}
-	return string(buf.Bytes())
+
+	return string(buf.Bytes()), nil
 }

@@ -1,7 +1,8 @@
 package ecr
 
 import (
-	"log"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,23 +11,28 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-func LatestImage(repo, matcher string) string {
+func LatestImage(repo, matcher string) (string, error) {
 	e := newEcr()
-	output := e.describeImages(repo)
-	if output == nil {
-		log.Fatalf("No results found for %s", repo)
+	output, err := e.describeImages(repo)
+	if err != nil {
+		return "", err
 	}
+
+	if output == nil {
+		return "", errors.New(fmt.Sprintf("No results found for %s", repo))
+	}
+
 	for _, id := range output.ImageDetails {
 		if exists := containsMatcher(id.ImageTags, matcher); exists {
 			for _, tag := range id.ImageTags {
 				if *tag != matcher {
-					return *tag
+					return *tag, nil
 				}
 			}
 		}
 	}
-	log.Fatalf("No latest tag found for %s", repo)
-	return ""
+
+	return "", errors.New(fmt.Sprintf("No %s tag found for %s", matcher, repo))
 }
 
 type Ecr struct {
@@ -59,7 +65,7 @@ func ecrClient() (client EcrDescriber) {
 	return ecr.New(session.New(config))
 }
 
-func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput) {
+func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput, err error) {
 	e.describer()
 	if cached, ok := e.cache[repo]; ok {
 		output = cached.(*ecr.DescribeImagesOutput)
@@ -67,14 +73,15 @@ func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput) {
 		input := &ecr.DescribeImagesInput{
 			RepositoryName: aws.String(repo),
 		}
-		var err error
+
 		output, err = e.describer().DescribeImages(input)
 		if err != nil {
-			log.Fatal(err.Error())
-			return nil
+			return
 		}
+
 		e.cache[repo] = output
 	}
+
 	return
 }
 

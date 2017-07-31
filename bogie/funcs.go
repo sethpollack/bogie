@@ -11,8 +11,19 @@ import (
 )
 
 func initFuncs(c *context, b *Bogie) template.FuncMap {
-	f := func(text string, out io.Writer) {
-		runTemplate(c, b, text, out)
+	f := func(text string, w io.Writer) error {
+		hasContent, buff, err := runTemplate(c, b, text)
+		if err != nil {
+			return err
+		}
+
+		if hasContent {
+			if _, err := io.Copy(w, buff); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
 	return template.FuncMap{

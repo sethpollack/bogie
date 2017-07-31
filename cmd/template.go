@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"errors"
-	"log"
+	"fmt"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -85,12 +85,16 @@ var templateCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		b := newBogie(&o)
+		b, err := newBogie(&o)
+		if err != nil {
+			return err
+		}
+
 		return bogie.RunBogie(b)
 	},
 }
 
-func newBogie(o *bogieOpts) *bogie.Bogie {
+func newBogie(o *bogieOpts) (*bogie.Bogie, error) {
 	b := &bogie.Bogie{
 		EnvFile:   o.envFile,
 		OutPath:   o.outPath,
@@ -113,11 +117,11 @@ func newBogie(o *bogieOpts) *bogie.Bogie {
 	if o.manifest != "" {
 		err := parseManifest(o.manifest, b)
 		if err != nil {
-			log.Fatalf("error parsing manifest file %v\n", err)
+			return &bogie.Bogie{}, errors.New(fmt.Sprintf("error parsing manifest file %v\n", err))
 		}
 	}
 
-	return b
+	return b, nil
 }
 
 func parseManifest(manifest string, b *bogie.Bogie) error {

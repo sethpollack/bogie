@@ -4,66 +4,84 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"log"
 
 	"go.mozilla.org/sops/decrypt"
 )
 
-func ReadFile(f func(text string, out io.Writer)) func(string) string {
-	return func(path string) string {
+func ReadFile(f func(text string, out io.Writer) error) func(string) (string, error) {
+	return func(path string) (string, error) {
 		output, err := ioutil.ReadFile(path)
 		if err != nil {
-			log.Fatal(err)
+			return "", err
 		}
+
 		var buff bytes.Buffer
+
 		f(string(output), &buff)
-		return buff.String()
+
+		return buff.String(), nil
 	}
 }
 
-func DecryptFile(f func(text string, out io.Writer)) func(string) string {
-	return func(path string) string {
+func DecryptFile(f func(text string, out io.Writer) error) func(string) (string, error) {
+	return func(path string) (string, error) {
 		output, err := decrypt.File(path, "yaml")
 		if err != nil {
-			log.Fatal(err)
+			return "", err
 		}
 
 		var buff bytes.Buffer
+
 		f(string(output), &buff)
-		return buff.String()
+
+		return buff.String(), nil
 	}
 }
 
-func ReadDir(f func(text string, out io.Writer)) func(string) map[string]string {
+func ReadDir(f func(text string, out io.Writer) error) func(string) (map[string]string, error) {
 	readFileFunc := ReadFile(f)
-	return func(dir string) map[string]string {
+	return func(dir string) (map[string]string, error) {
 		fileMap := make(map[string]string)
 		files, err := ioutil.ReadDir(dir)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
+
 		for _, file := range files {
 			if !file.IsDir() {
-				fileMap[file.Name()] = readFileFunc(dir + "/" + file.Name())
+				res, err := readFileFunc(dir + "/" + file.Name())
+				if err != nil {
+					return nil, err
+				}
+
+				fileMap[file.Name()] = res
 			}
 		}
-		return fileMap
+
+		return fileMap, nil
 	}
 }
 
-func DecryptDir(f func(text string, out io.Writer)) func(string) map[string]string {
+func DecryptDir(f func(text string, out io.Writer) error) func(string) (map[string]string, error) {
 	readFileFunc := DecryptFile(f)
-	return func(dir string) map[string]string {
+	return func(dir string) (map[string]string, error) {
 		fileMap := make(map[string]string)
 		files, err := ioutil.ReadDir(dir)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
+
 		for _, file := range files {
 			if !file.IsDir() {
-				fileMap[file.Name()] = readFileFunc(dir + "/" + file.Name())
+				res, err := readFileFunc(dir + "/" + file.Name())
+				if err != nil {
+					return nil, err
+				}
+
+				fileMap[file.Name()] = res
 			}
 		}
-		return fileMap
+
+		return fileMap, nil
 	}
 }

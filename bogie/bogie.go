@@ -2,9 +2,10 @@ package bogie
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"text/template"
@@ -57,7 +58,7 @@ func RunBogie(b *Bogie) error {
 	}
 }
 
-func runTemplate(c *context, b *Bogie, text string, out io.Writer) {
+func runTemplate(c *context, b *Bogie, text string) (bool, io.Reader, error) {
 	tmpl, err := template.New("template").
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(initFuncs(c, b)).
@@ -66,30 +67,47 @@ func runTemplate(c *context, b *Bogie, text string, out io.Writer) {
 		Parse(text)
 
 	if err != nil {
-		log.Fatalf("Line %q: %v\n", text, err)
+		return false, nil, errors.New(fmt.Sprintf("Line %q: %v\n", text, err))
 	}
 
-	if err := tmpl.Execute(out, c); err != nil {
-		panic(err)
+	var buff bytes.Buffer
+	if err := tmpl.Execute(&buff, c); err != nil {
+		return false, nil, err
 	}
+
+	return hasContent(buff), &buff, nil
+}
+
+func hasContent(b bytes.Buffer) bool {
+	s := bytes.TrimSpace(b.Bytes())
+	return len(s) > 0
 }
 
 func renderTemplateToDir(b *Bogie, apps []*applicationOutput) error {
 	for _, app := range apps {
-		if err := os.MkdirAll(path.Dir(app.outPath), os.FileMode(0744)); err != nil {
-			return err
-		}
-
-		f, err := openOutFile(app.outPath)
+		hasContent, buff, err := runTemplate(app.context, b, app.template)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
 
-		w := bufio.NewWriter(f)
-		defer w.Flush()
+		if hasContent {
+			if err := os.MkdirAll(path.Dir(app.outPath), os.FileMode(0744)); err != nil {
+				return err
+			}
 
-		runTemplate(app.context, b, app.template, w)
+			f, err := openOutFile(app.outPath)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			w := bufio.NewWriter(f)
+			defer w.Flush()
+
+			if _, err := io.Copy(w, buff); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -110,20 +128,37 @@ func renderTemplateToFile(b *Bogie, apps []*applicationOutput) error {
 	defer w.Flush()
 
 	for _, app := range apps {
-		fmt.Fprint(w, "\n---\n")
-		runTemplate(app.context, b, app.template, w)
+		hasContent, buff, err := runTemplate(app.context, b, app.template)
+		if err != nil {
+			return err
+		}
+
+		if hasContent {
+			fmt.Fprint(w, "\n---\n")
+			if _, err := io.Copy(w, buff); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
 func renderTemplateToSTDOUT(b *Bogie, apps []*applicationOutput) error {
-	out := os.Stdout
+	w := os.Stdout
 	for _, app := range apps {
-		fmt.Fprint(out, "\n---\n")
-		runTemplate(app.context, b, app.template, out)
-	}
+		hasContent, buff, err := runTemplate(app.context, b, app.template)
+		if err != nil {
+			return err
+		}
 
+		if hasContent {
+			fmt.Fprint(w, "\n---\n")
+			if _, err := io.Copy(w, buff); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
