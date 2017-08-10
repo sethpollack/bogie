@@ -19,7 +19,7 @@ type Config struct {
 	b           *Bogie
 }
 
-func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
+func processApplications(b *Bogie) ([]*applicationOutput, error) {
 	c, err := genContext(b.EnvFile)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
 			b:           b,
 		}
 
-		err = proccessApplication(conf)
+		err = processApplication(conf)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func genContext(envfile string) (context, error) {
 	return c, nil
 }
 
-func proccessApplication(conf Config) error {
+func processApplication(conf Config) error {
 	input := filepath.Clean(conf.input)
 	output := filepath.Clean(conf.output)
 
@@ -116,7 +116,7 @@ func proccessApplication(conf Config) error {
 		if entry.IsDir() {
 			conf.input = nextInPath
 			conf.output = nextOutPath
-			err := proccessApplication(conf)
+			err := processApplication(conf)
 			if err != nil {
 				return err
 			}

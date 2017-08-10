@@ -44,7 +44,7 @@ type Bogie struct {
 }
 
 func RunBogie(b *Bogie) error {
-	apps, err := proccessApplications(b)
+	apps, err := processApplications(b)
 	if err != nil {
 		return err
 	}
