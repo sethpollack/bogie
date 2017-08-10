@@ -10,6 +10,15 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type Config struct {
+	appOutputs  *[]*applicationOutput
+	muteWarning bool
+	input       string
+	output      string
+	c           *context
+	b           *Bogie
+}
+
 func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
 	c, err := genContext(b.EnvFile)
 	if err != nil {
@@ -30,7 +39,16 @@ func proccessApplications(b *Bogie) ([]*applicationOutput, error) {
 
 		releaseDir := filepath.Join(b.OutPath, app.Name)
 
-		err = proccessApplication(&appOutputs, app.Templates, releaseDir, c, b)
+		conf := Config{
+			appOutputs:  &appOutputs,
+			input:       app.Templates,
+			output:      releaseDir,
+			muteWarning: app.MuteWarning,
+			c:           c,
+			b:           b,
+		}
+
+		err = proccessApplication(conf)
 		if err != nil {
 			return nil, err
 		}
@@ -73,9 +91,9 @@ func genContext(envfile string) (context, error) {
 	return c, nil
 }
 
-func proccessApplication(appOutputs *[]*applicationOutput, input, output string, c *context, b *Bogie) error {
-	input = filepath.Clean(input)
-	output = filepath.Clean(output)
+func proccessApplication(conf Config) error {
+	input := filepath.Clean(conf.input)
+	output := filepath.Clean(conf.output)
 
 	entries, err := ioutil.ReadDir(input)
 	if err != nil {
@@ -84,7 +102,7 @@ func proccessApplication(appOutputs *[]*applicationOutput, input, output string,
 
 	helper, _ := util.ReadInput(input + "/_helpers.tmpl")
 
-	r := b.Rules.Clone()
+	r := conf.b.Rules.Clone()
 	r.ParseFile(input + "/.bogieignore")
 
 	for _, entry := range entries {
@@ -96,7 +114,9 @@ func proccessApplication(appOutputs *[]*applicationOutput, input, output string,
 		nextOutPath := filepath.Join(output, entry.Name())
 
 		if entry.IsDir() {
-			err := proccessApplication(appOutputs, nextInPath, nextOutPath, c, b)
+			conf.input = nextInPath
+			conf.output = nextOutPath
+			err := proccessApplication(conf)
 			if err != nil {
 				return err
 			}
@@ -106,14 +126,14 @@ func proccessApplication(appOutputs *[]*applicationOutput, input, output string,
 				return err
 			}
 
-			if c.Values == nil {
+			if conf.c.Values == nil && !conf.muteWarning {
 				log.Printf("No values found for template (%v)", nextInPath)
 			}
 
-			*appOutputs = append(*appOutputs, &applicationOutput{
+			*conf.appOutputs = append(*conf.appOutputs, &applicationOutput{
 				outPath:  nextOutPath,
 				template: helper + inString,
-				context:  c,
+				context:  conf.c,
 			})
 		}
 	}

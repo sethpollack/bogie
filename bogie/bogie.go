@@ -15,9 +15,10 @@ import (
 )
 
 type ApplicationInput struct {
-	Name      string
-	Templates string
-	Values    string
+	Name        string
+	Templates   string
+	Values      string
+	MuteWarning bool `yaml:"mute_warning"`
 }
 
 type applicationOutput struct {
