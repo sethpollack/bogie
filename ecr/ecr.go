@@ -72,9 +72,25 @@ func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput, err
 	} else {
 		input := &ecr.DescribeImagesInput{
 			RepositoryName: aws.String(repo),
+			Filter: &ecr.DescribeImagesFilter{
+			},
 		}
+		input.Filter.SetTagStatus("TAGGED")
 
 		output, err = e.describer().DescribeImages(input)
+		nextToken := output.NextToken
+		for nextToken != nil && len(*nextToken) > 0 {
+			input.NextToken = nextToken
+			var nextOutput *ecr.DescribeImagesOutput
+			nextOutput, err = e.describer().DescribeImages(input)
+			if err != nil {
+				return
+			}
+			for _, additionalImage := range nextOutput.ImageDetails {
+				output.ImageDetails = append(output.ImageDetails, additionalImage)
+			}
+			nextToken = nextOutput.NextToken
+		}
 		if err != nil {
 			return
 		}
