@@ -88,7 +88,7 @@ func renderTemplateToDir(b *Bogie, apps []*applicationOutput) error {
 	for _, app := range apps {
 		hasContent, buff, err := runTemplate(app.context, b, app.template)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error when writing to %s: %#v\n", app.outPath, err)
 		}
 
 		if hasContent {
