@@ -43,7 +43,7 @@ type Bogie struct {
 	Rules             *ignore.Rules
 }
 
-func RunBogie(b *Bogie) error {
+func (b *Bogie) Run() error {
 	apps, err := processApplications(b)
 	if err != nil {
 		return err
@@ -56,6 +56,12 @@ func RunBogie(b *Bogie) error {
 		return renderTemplateToFile(b, apps)
 	default:
 		return renderTemplateToSTDOUT(b, apps)
+	}
+}
+
+func (b *Bogie) InitRules() {
+	if b.Rules == nil {
+		b.Rules = ignore.Init()
 	}
 }
 

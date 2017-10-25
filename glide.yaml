@@ -17,3 +17,5 @@ import:
   version: ~2.0.9
   subpackages:
   - decrypt
+- package: github.com/google/go-github
+- package: golang.org/x/oauth2

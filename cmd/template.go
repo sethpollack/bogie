@@ -7,8 +7,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/sethpollack/bogie/bogie"
-	"github.com/sethpollack/bogie/ignore"
-	"github.com/sethpollack/bogie/util"
+	"github.com/sethpollack/bogie/io"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +89,7 @@ var templateCmd = &cobra.Command{
 			return err
 		}
 
-		return bogie.RunBogie(b)
+		return b.Run()
 	},
 }
 
@@ -104,9 +103,8 @@ func newBogie(o *bogieOpts) (*bogie.Bogie, error) {
 		RDelim:    o.rDelim,
 	}
 
-	r := ignore.Init()
-	r.ParseFile(o.ignoreFile)
-	b.Rules = r
+	b.InitRules()
+	b.Rules.ParseFile(o.ignoreFile)
 
 	if o.templatesPath != "" && o.valuesFile != "" {
 		b.ApplicationInputs = []*bogie.ApplicationInput{
@@ -125,7 +123,7 @@ func newBogie(o *bogieOpts) (*bogie.Bogie, error) {
 }
 
 func parseManifest(manifest string, b *bogie.Bogie) error {
-	output, err := util.ReadInput(manifest)
+	output, err := io.ReadInput(manifest)
 	if err != nil {
 		return err
 	}

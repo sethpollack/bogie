@@ -1,12 +1,11 @@
 package bogie
 
 import (
-	"io/ioutil"
+	"fmt"
 	"log"
 	"path/filepath"
 
-	"github.com/sethpollack/bogie/util"
-	"go.mozilla.org/sops/decrypt"
+	"github.com/sethpollack/bogie/io"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -59,7 +58,7 @@ func processApplications(b *Bogie) ([]*applicationOutput, error) {
 
 func setValueContext(values string, c context) (*context, error) {
 	if values != "" {
-		inValues, err := decrypt.File(values, "yaml")
+		inValues, err := io.DecryptFile(values, "yaml")
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +76,7 @@ func genContext(envfile string) (context, error) {
 	c := context{}
 
 	if envfile != "" {
-		inEnv, err := decrypt.File(envfile, "yaml")
+		inEnv, err := io.DecryptFile(envfile, "yaml")
 		if err != nil {
 			return context{}, err
 		}
@@ -92,15 +91,15 @@ func genContext(envfile string) (context, error) {
 }
 
 func processApplication(conf Config) error {
-	input := filepath.Clean(conf.input)
-	output := filepath.Clean(conf.output)
+	input := conf.input
+	output := conf.output
 
-	entries, err := ioutil.ReadDir(input)
+	entries, err := io.ReadDir(input)
 	if err != nil {
 		return err
 	}
 
-	helper, _ := util.ReadInput(input + "/_helpers.tmpl")
+	helper, _ := io.ReadInput(input + "/_helpers.tmpl")
 
 	r := conf.b.Rules.Clone()
 	r.ParseFile(input + "/.bogieignore")
@@ -110,7 +109,7 @@ func processApplication(conf Config) error {
 			continue
 		}
 
-		nextInPath := filepath.Join(input, entry.Name())
+		nextInPath := fmt.Sprintf("%s/%s", input, entry.Name())
 		nextOutPath := filepath.Join(output, entry.Name())
 
 		if entry.IsDir() {
@@ -121,7 +120,7 @@ func processApplication(conf Config) error {
 				return err
 			}
 		} else {
-			inString, err := util.ReadInput(nextInPath)
+			inString, err := io.ReadInput(nextInPath)
 			if err != nil {
 				return err
 			}
