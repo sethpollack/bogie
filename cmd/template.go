@@ -23,6 +23,7 @@ type bogieOpts struct {
 	valuesFile    string
 	templatesPath string
 	ignoreFile    string
+	skipImageLookup bool
 }
 
 var o bogieOpts
@@ -44,6 +45,7 @@ func init() {
 	templateCmd.PersistentFlags().StringVarP(&o.outFile, "output-file", "f", "release.yaml", "`file` to store the processed templates.")
 
 	templateCmd.PersistentFlags().StringVarP(&o.ignoreFile, "ignore-file", "i", ".bogieignore", ".bogieignore file")
+	templateCmd.Flags().BoolVarP(&o.skipImageLookup, "skip-image-lookup", "s", false, "Skip image lookup in template function latestImage")
 }
 
 var template_example = `
@@ -101,6 +103,7 @@ func newBogie(o *bogieOpts) (*bogie.Bogie, error) {
 		OutFormat: o.outFormat,
 		LDelim:    o.lDelim,
 		RDelim:    o.rDelim,
+		SkipImageLookup: o.skipImageLookup,
 	}
 
 	b.InitRules()

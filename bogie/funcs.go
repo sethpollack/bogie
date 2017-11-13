@@ -27,7 +27,7 @@ func initFuncs(c *context, b *Bogie) template.FuncMap {
 	}
 
 	return template.FuncMap{
-		"latestImage": ecr.LatestImage,
+		"latestImage": ecr.LatestImage(b.SkipImageLookup),
 		"readDir":     file.ReadDir(f),
 		"readFile":    file.ReadFile(f),
 		"decryptFile": file.DecryptFile(f),

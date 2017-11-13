@@ -11,28 +11,33 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-func LatestImage(repo, matcher string) (string, error) {
-	e := newEcr()
-	output, err := e.describeImages(repo)
-	if err != nil {
-		return "", err
-	}
+func LatestImage(skip bool) func(string, string) (string, error) {
+	return func(repo, matcher string) (string, error) {
+		if skip {
+			return matcher, nil
+		}
 
-	if output == nil {
-		return "", errors.New(fmt.Sprintf("No results found for %s", repo))
-	}
+		e := newEcr()
+		output, err := e.describeImages(repo)
+		if err != nil {
+			return "", err
+		}
 
-	for _, id := range output.ImageDetails {
-		if exists := containsMatcher(id.ImageTags, matcher); exists {
-			for _, tag := range id.ImageTags {
-				if *tag != matcher {
-					return *tag, nil
+		if output == nil {
+			return "", errors.New(fmt.Sprintf("No results found for %s", repo))
+		}
+
+		for _, id := range output.ImageDetails {
+			if exists := containsMatcher(id.ImageTags, matcher); exists {
+				for _, tag := range id.ImageTags {
+					if *tag != matcher {
+						return *tag, nil
+					}
 				}
 			}
 		}
+		return "", errors.New(fmt.Sprintf("No %s tag found for %s", matcher, repo))
 	}
-
-	return "", errors.New(fmt.Sprintf("No %s tag found for %s", matcher, repo))
 }
 
 type Ecr struct {
@@ -72,8 +77,7 @@ func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput, err
 	} else {
 		input := &ecr.DescribeImagesInput{
 			RepositoryName: aws.String(repo),
-			Filter: &ecr.DescribeImagesFilter{
-			},
+			Filter:         &ecr.DescribeImagesFilter{},
 		}
 		input.Filter.SetTagStatus("TAGGED")
 
