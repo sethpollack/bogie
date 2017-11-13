@@ -15,21 +15,12 @@ import (
 )
 
 type ApplicationInput struct {
-	Name        string
-	Templates   string
-	Values      string
-	MuteWarning bool `yaml:"mute_warning"`
-}
-
-type applicationOutput struct {
-	outPath  string
-	template string
-	context  *context
-}
-
-type context struct {
-	Values map[interface{}]interface{}
-	Env    map[interface{}]interface{}
+	Name         string
+	Env          string
+	Templates    string
+	Values       []string
+	OverrideVars []string `yaml:"override_vars"`
+	MuteWarning  bool     `yaml:"mute_warning"`
 }
 
 type Bogie struct {

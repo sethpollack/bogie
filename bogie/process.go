@@ -4,18 +4,33 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
+	"strings"
 
-	"github.com/sethpollack/bogie/io"
 	yaml "gopkg.in/yaml.v2"
+
+	dotaccess "github.com/go-bongo/go-dotaccess"
+	"github.com/imdario/mergo"
+	"github.com/sethpollack/bogie/io"
 )
 
-type Config struct {
+type applicationOutput struct {
+	outPath  string
+	template string
+	context  *context
+}
+
+type context struct {
+	Values map[interface{}]interface{}
+}
+
+type config struct {
 	appOutputs  *[]*applicationOutput
 	muteWarning bool
 	input       string
 	output      string
-	c           *context
-	b           *Bogie
+	context     *context
+	bogie       *Bogie
 }
 
 func processApplications(b *Bogie) ([]*applicationOutput, error) {
@@ -24,27 +39,22 @@ func processApplications(b *Bogie) ([]*applicationOutput, error) {
 		return nil, err
 	}
 
-	if c.Env == nil {
-		log.Print("No env_file found")
-	}
-
 	appOutputs := []*applicationOutput{}
-
 	for _, app := range b.ApplicationInputs {
-		c, err := setValueContext(app.Values, c)
+		c, err := setValueContext(app, c)
 		if err != nil {
 			return nil, err
 		}
 
 		releaseDir := filepath.Join(b.OutPath, app.Name)
 
-		conf := Config{
+		conf := config{
 			appOutputs:  &appOutputs,
 			input:       app.Templates,
 			output:      releaseDir,
 			muteWarning: app.MuteWarning,
-			c:           c,
-			b:           b,
+			context:     c,
+			bogie:       b,
 		}
 
 		err = processApplication(conf)
@@ -56,14 +66,61 @@ func processApplications(b *Bogie) ([]*applicationOutput, error) {
 	return appOutputs, nil
 }
 
-func setValueContext(values string, c context) (*context, error) {
-	if values != "" {
-		inValues, err := io.DecryptFile(values, "yaml")
+func genContext(envfile string) (*context, error) {
+	c := context{}
+
+	if envfile == "" {
+		return &c, nil
+	}
+
+	inEnv, err := io.DecryptFile(envfile, "yaml")
+	if err != nil {
+		return &c, err
+	}
+
+	err = yaml.Unmarshal(inEnv, &c.Values)
+	if err != nil {
+		return &c, err
+	}
+
+	return &c, nil
+}
+
+func setValueContext(app *ApplicationInput, old *context) (*context, error) {
+	c := context{}
+
+	files := []string{}
+
+	if app.Env != "" {
+		files = append(files, fmt.Sprintf("%s/%s.values.yaml", app.Templates, app.Env))
+	}
+
+	if len(app.Values) == 0 {
+		files = append(files, fmt.Sprintf("%s/values.yaml", app.Templates))
+	} else {
+		sort.Sort(sort.Reverse(sort.StringSlice(app.Values)))
+		files = append(files, app.Values...)
+	}
+
+	for _, file := range files {
+		b, err := io.DecryptFile(file, "yaml")
 		if err != nil {
-			return nil, err
+			continue
+		}
+		var tmp map[interface{}]interface{}
+		err = yaml.Unmarshal(b, &tmp)
+		if err != nil {
+			continue
 		}
 
-		err = yaml.Unmarshal([]byte(inValues), &c.Values)
+		mergo.Merge(&c.Values, tmp)
+	}
+
+	mergo.Merge(&c.Values, old.Values)
+
+	for _, keyVal := range app.OverrideVars {
+		splits := strings.SplitN(keyVal, "=", 2)
+		err := dotaccess.Set(c.Values, splits[0], splits[1])
 		if err != nil {
 			return nil, err
 		}
@@ -72,25 +129,7 @@ func setValueContext(values string, c context) (*context, error) {
 	return &c, nil
 }
 
-func genContext(envfile string) (context, error) {
-	c := context{}
-
-	if envfile != "" {
-		inEnv, err := io.DecryptFile(envfile, "yaml")
-		if err != nil {
-			return context{}, err
-		}
-
-		err = yaml.Unmarshal([]byte(inEnv), &c.Env)
-		if err != nil {
-			return context{}, err
-		}
-	}
-
-	return c, nil
-}
-
-func processApplication(conf Config) error {
+func processApplication(conf config) error {
 	input := conf.input
 	output := conf.output
 
@@ -101,7 +140,7 @@ func processApplication(conf Config) error {
 
 	helper, _ := io.ReadInput(input + "/_helpers.tmpl")
 
-	r := conf.b.Rules.Clone()
+	r := conf.bogie.Rules.Clone()
 	r.ParseFile(input + "/.bogieignore")
 
 	for _, entry := range entries {
@@ -115,6 +154,7 @@ func processApplication(conf Config) error {
 		if entry.IsDir() {
 			conf.input = nextInPath
 			conf.output = nextOutPath
+
 			err := processApplication(conf)
 			if err != nil {
 				return err
@@ -125,14 +165,14 @@ func processApplication(conf Config) error {
 				return err
 			}
 
-			if conf.c.Values == nil && !conf.muteWarning {
+			if conf.context.Values == nil && !conf.muteWarning {
 				log.Printf("No values found for template (%v)", nextInPath)
 			}
 
 			*conf.appOutputs = append(*conf.appOutputs, &applicationOutput{
 				outPath:  nextOutPath,
 				template: helper + inString,
-				context:  conf.c,
+				context:  conf.context,
 			})
 		}
 	}

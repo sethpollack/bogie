@@ -14,8 +14,10 @@ import:
   subpackages:
   - aws
 - package: go.mozilla.org/sops
-  version: ~2.0.9
+  version: ~3.0.0
   subpackages:
   - decrypt
-- package: github.com/google/go-github
 - package: golang.org/x/oauth2
+- package: github.com/google/go-github
+- package: github.com/imdario/mergo
+- package: github.com/go-bongo/go-dotaccess
