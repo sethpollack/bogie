@@ -12,8 +12,8 @@ WORKDIR /go/src/github.com/sethpollack/bogie
 COPY --from=vendor /app/vendor ./vendor
 RUN	CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o bin/bogie
 
-FROM scratch
-MAINTAINER Seth Pollack <spollack@beenverified.com>
+FROM scratch AS bogie
+LABEL maintainer="Seth Pollack <spollack@beenverified.com>"
 COPY --from=build /etc/ssl/certs/ /etc/ssl/certs/
 COPY --from=build /go/src/github.com/sethpollack/bogie/bin/bogie /usr/local/bin/bogie
 ENTRYPOINT ["/usr/local/bin/bogie"]

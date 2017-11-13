@@ -8,9 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "bogie",
-	Short: "",
-	Long:  ``,
+	Use: "bogie",
 }
 
 func Execute() {
