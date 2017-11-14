@@ -93,7 +93,6 @@ applications:
   - app.secrets.key=value
 - name: my-other-other-templates
   templates: path/to/templates
-  mute_warning: true
 `
 
 var templateCmd = &cobra.Command{

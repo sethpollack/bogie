@@ -20,7 +20,6 @@ type ApplicationInput struct {
 	Templates    string
 	Values       []string
 	OverrideVars []string `yaml:"override_vars"`
-	MuteWarning  bool     `yaml:"mute_warning"`
 }
 
 type Bogie struct {

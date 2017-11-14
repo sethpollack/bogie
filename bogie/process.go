@@ -2,7 +2,6 @@ package bogie
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -25,12 +24,11 @@ type context struct {
 }
 
 type config struct {
-	appOutputs  *[]*applicationOutput
-	muteWarning bool
-	input       string
-	output      string
-	context     *context
-	bogie       *Bogie
+	appOutputs *[]*applicationOutput
+	input      string
+	output     string
+	context    *context
+	bogie      *Bogie
 }
 
 func processApplications(b *Bogie) ([]*applicationOutput, error) {
@@ -49,12 +47,11 @@ func processApplications(b *Bogie) ([]*applicationOutput, error) {
 		releaseDir := filepath.Join(b.OutPath, app.Name)
 
 		conf := config{
-			appOutputs:  &appOutputs,
-			input:       app.Templates,
-			output:      releaseDir,
-			muteWarning: app.MuteWarning,
-			context:     c,
-			bogie:       b,
+			appOutputs: &appOutputs,
+			input:      app.Templates,
+			output:     releaseDir,
+			context:    c,
+			bogie:      b,
 		}
 
 		err = processApplication(conf)
@@ -163,10 +160,6 @@ func processApplication(conf config) error {
 			inString, err := io.ReadInput(nextInPath)
 			if err != nil {
 				return err
-			}
-
-			if conf.context.Values == nil && !conf.muteWarning {
-				log.Printf("No values found for template (%v)", nextInPath)
 			}
 
 			*conf.appOutputs = append(*conf.appOutputs, &applicationOutput{
