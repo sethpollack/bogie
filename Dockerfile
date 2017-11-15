@@ -10,7 +10,9 @@ RUN apk --no-cache update && \
 COPY . /go/src/github.com/sethpollack/bogie
 WORKDIR /go/src/github.com/sethpollack/bogie
 COPY --from=vendor /app/vendor ./vendor
-RUN	CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o bin/bogie
+RUN	CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -ldflags \
+    "-X github.com/sethpollack/bogie/version.Version=`git describe --tags` -X github.com/sethpollack/bogie/version.Commit=`git log -n 1 --pretty=format:"%h"`" \
+    -o bin/bogie
 
 FROM scratch AS bogie
 LABEL maintainer="Seth Pollack <spollack@beenverified.com>"
