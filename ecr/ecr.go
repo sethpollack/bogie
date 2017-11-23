@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
+var ecrCache *Ecr
+
 func LatestImage(skip bool) func(string, string) (string, error) {
 	return func(repo, matcher string) (string, error) {
 		if skip {
@@ -41,26 +43,23 @@ func LatestImage(skip bool) func(string, string) (string, error) {
 }
 
 type Ecr struct {
-	describer func() EcrDescriber
+	describer EcrDescriber
 	cache     map[string]interface{}
 }
 
 type EcrDescriber interface {
-	DescribeImages(input *ecr.DescribeImagesInput) (*ecr.DescribeImagesOutput, error)
+	DescribeImagesPages(input *ecr.DescribeImagesInput, fn func(*ecr.DescribeImagesOutput, bool) bool) error
 }
 
-var describerClient EcrDescriber
-
 func newEcr() *Ecr {
-	return &Ecr{
-		describer: func() EcrDescriber {
-			if describerClient == nil {
-				describerClient = ecrClient()
-			}
-			return describerClient
-		},
-		cache: make(map[string]interface{}),
+	if ecrCache == nil {
+		ecrCache = &Ecr{
+			describer: ecrClient(),
+			cache:     make(map[string]interface{}),
+		}
 	}
+
+	return ecrCache
 }
 
 func ecrClient() (client EcrDescriber) {
@@ -70,39 +69,31 @@ func ecrClient() (client EcrDescriber) {
 	return ecr.New(session.New(config))
 }
 
-func (e *Ecr) describeImages(repo string) (output *ecr.DescribeImagesOutput, err error) {
-	e.describer()
+func (e *Ecr) describeImages(repo string) (*ecr.DescribeImagesOutput, error) {
 	if cached, ok := e.cache[repo]; ok {
-		output = cached.(*ecr.DescribeImagesOutput)
-	} else {
-		input := &ecr.DescribeImagesInput{
-			RepositoryName: aws.String(repo),
-			Filter:         &ecr.DescribeImagesFilter{},
-		}
-		input.Filter.SetTagStatus("TAGGED")
-
-		output, err = e.describer().DescribeImages(input)
-		nextToken := output.NextToken
-		for nextToken != nil && len(*nextToken) > 0 {
-			input.NextToken = nextToken
-			var nextOutput *ecr.DescribeImagesOutput
-			nextOutput, err = e.describer().DescribeImages(input)
-			if err != nil {
-				return
-			}
-			for _, additionalImage := range nextOutput.ImageDetails {
-				output.ImageDetails = append(output.ImageDetails, additionalImage)
-			}
-			nextToken = nextOutput.NextToken
-		}
-		if err != nil {
-			return
-		}
-
-		e.cache[repo] = output
+		return cached.(*ecr.DescribeImagesOutput), nil
 	}
 
-	return
+	input := &ecr.DescribeImagesInput{
+		RepositoryName: aws.String(repo),
+		Filter: &ecr.DescribeImagesFilter{
+			TagStatus: aws.String("TAGGED"),
+		},
+	}
+
+	output := &ecr.DescribeImagesOutput{}
+	err := e.describer.DescribeImagesPages(input,
+		func(page *ecr.DescribeImagesOutput, lastPage bool) bool {
+			output.ImageDetails = append(output.ImageDetails, page.ImageDetails...)
+			return !lastPage
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	e.cache[repo] = output
+	return output, nil
 }
 
 func containsMatcher(tags []*string, matcher string) bool {
