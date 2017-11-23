@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-var ecrCache *Ecr
+var ecrCache *ecrClient
 
 func LatestImage(skip bool) func(string, string) (string, error) {
 	return func(repo, matcher string) (string, error) {
@@ -19,7 +19,7 @@ func LatestImage(skip bool) func(string, string) (string, error) {
 			return matcher, nil
 		}
 
-		e := newEcr()
+		e := getClient()
 		output, err := e.describeImages(repo)
 		if err != nil {
 			return "", err
@@ -42,19 +42,19 @@ func LatestImage(skip bool) func(string, string) (string, error) {
 	}
 }
 
-type Ecr struct {
-	describer EcrDescriber
+type ecrClient struct {
+	describer ecrDescriber
 	cache     map[string]interface{}
 }
 
-type EcrDescriber interface {
+type ecrDescriber interface {
 	DescribeImagesPages(input *ecr.DescribeImagesInput, fn func(*ecr.DescribeImagesOutput, bool) bool) error
 }
 
-func newEcr() *Ecr {
+func getClient() *ecrClient {
 	if ecrCache == nil {
-		ecrCache = &Ecr{
-			describer: ecrClient(),
+		ecrCache = &ecrClient{
+			describer: newClient(),
 			cache:     make(map[string]interface{}),
 		}
 	}
@@ -62,14 +62,14 @@ func newEcr() *Ecr {
 	return ecrCache
 }
 
-func ecrClient() (client EcrDescriber) {
+func newClient() (client ecrDescriber) {
 	config := aws.NewConfig()
 	timeout := 500 * time.Millisecond
 	config = config.WithHTTPClient(&http.Client{Timeout: timeout})
 	return ecr.New(session.New(config))
 }
 
-func (e *Ecr) describeImages(repo string) (*ecr.DescribeImagesOutput, error) {
+func (e *ecrClient) describeImages(repo string) (*ecr.DescribeImagesOutput, error) {
 	if cached, ok := e.cache[repo]; ok {
 		return cached.(*ecr.DescribeImagesOutput), nil
 	}
