@@ -3,9 +3,8 @@ package file
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 
-	"go.mozilla.org/sops/decrypt"
+	bogieio "github.com/sethpollack/bogie/io"
 )
 
 var templater func(text string, out io.Writer) error
@@ -32,7 +31,7 @@ func readFile(read func() ([]byte, error)) (string, error) {
 
 func readDir(dir string, read func(string) (string, error)) (map[string]string, error) {
 	fileMap := make(map[string]string)
-	files, err := ioutil.ReadDir(dir)
+	files, err := bogieio.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -54,13 +53,13 @@ func readDir(dir string, read func(string) (string, error)) (map[string]string, 
 
 func ReadFile(path string) (string, error) {
 	return readFile(func() ([]byte, error) {
-		return ioutil.ReadFile(path)
+		return bogieio.ReadFile(path)
 	})
 }
 
 func DecryptFile(path string) (string, error) {
 	return readFile(func() ([]byte, error) {
-		return decrypt.File(path, "yaml")
+		return bogieio.DecryptFile(path, "yaml")
 	})
 }
 
