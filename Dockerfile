@@ -1,15 +1,12 @@
-FROM beenverifiedinc/glide AS vendor
-COPY glide.yaml glide.lock /app/
-WORKDIR /app
-RUN glide install
-
 FROM golang:1.8-alpine AS build
 RUN apk --no-cache update && \
     apk --no-cache add make ca-certificates git && \
     rm -rf /var/cache/apk/*
-COPY . /go/src/github.com/sethpollack/bogie
 WORKDIR /go/src/github.com/sethpollack/bogie
-COPY --from=vendor /app/vendor ./vendor
+RUN go get -u github.com/golang/dep/cmd/dep
+COPY Gopkg.toml Gopkg.lock ./
+RUN dep ensure -v -vendor-only
+COPY . ./
 RUN	CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -ldflags \
     "-X github.com/sethpollack/bogie/version.Version=`git describe --tags` -X github.com/sethpollack/bogie/version.Commit=`git log -n 1 --pretty=format:"%h"`" \
     -o bin/bogie
