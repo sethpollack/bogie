@@ -8,80 +8,66 @@ import (
 	"go.mozilla.org/sops/decrypt"
 )
 
-func ReadFile(f func(text string, out io.Writer) error) func(string) (string, error) {
-	return func(path string) (string, error) {
-		output, err := ioutil.ReadFile(path)
-		if err != nil {
-			return "", err
-		}
+var templater func(text string, out io.Writer) error
 
-		var buff bytes.Buffer
-
-		f(string(output), &buff)
-
-		return buff.String(), nil
-	}
+func SetTemplater(f func(text string, out io.Writer) error) {
+	templater = f
 }
 
-func DecryptFile(f func(text string, out io.Writer) error) func(string) (string, error) {
-	return func(path string) (string, error) {
-		output, err := decrypt.File(path, "yaml")
-		if err != nil {
-			return "", err
-		}
-
-		var buff bytes.Buffer
-
-		f(string(output), &buff)
-
-		return buff.String(), nil
+func readFile(read func() ([]byte, error)) (string, error) {
+	output, err := read()
+	if err != nil {
+		return "", err
 	}
+
+	var buff bytes.Buffer
+
+	err = templater(string(output), &buff)
+	if err != nil {
+		return "", err
+	}
+
+	return buff.String(), nil
 }
 
-func ReadDir(f func(text string, out io.Writer) error) func(string) (map[string]string, error) {
-	readFileFunc := ReadFile(f)
-	return func(dir string) (map[string]string, error) {
-		fileMap := make(map[string]string)
-		files, err := ioutil.ReadDir(dir)
-		if err != nil {
-			return nil, err
-		}
+func readDir(dir string, read func(string) (string, error)) (map[string]string, error) {
+	fileMap := make(map[string]string)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, file := range files {
-			if !file.IsDir() {
-				res, err := readFileFunc(dir + "/" + file.Name())
-				if err != nil {
-					return nil, err
-				}
+	for _, file := range files {
+		if !file.IsDir() {
+			res, err := read(dir + "/" + file.Name())
 
-				fileMap[file.Name()] = res
+			if err != nil {
+				return nil, err
 			}
-		}
 
-		return fileMap, nil
+			fileMap[file.Name()] = res
+		}
 	}
+
+	return fileMap, nil
 }
 
-func DecryptDir(f func(text string, out io.Writer) error) func(string) (map[string]string, error) {
-	readFileFunc := DecryptFile(f)
-	return func(dir string) (map[string]string, error) {
-		fileMap := make(map[string]string)
-		files, err := ioutil.ReadDir(dir)
-		if err != nil {
-			return nil, err
-		}
+func ReadFile(path string) (string, error) {
+	return readFile(func() ([]byte, error) {
+		return ioutil.ReadFile(path)
+	})
+}
 
-		for _, file := range files {
-			if !file.IsDir() {
-				res, err := readFileFunc(dir + "/" + file.Name())
-				if err != nil {
-					return nil, err
-				}
+func DecryptFile(path string) (string, error) {
+	return readFile(func() ([]byte, error) {
+		return decrypt.File(path, "yaml")
+	})
+}
 
-				fileMap[file.Name()] = res
-			}
-		}
+func ReadDir(dir string) (map[string]string, error) {
+	return readDir(dir, ReadFile)
+}
 
-		return fileMap, nil
-	}
+func DecryptDir(dir string) (map[string]string, error) {
+	return readDir(dir, DecryptFile)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func initFuncs(c *context, b *Bogie) template.FuncMap {
-	f := func(text string, w io.Writer) error {
+	templater := func(text string, w io.Writer) error {
 		hasContent, buff, err := runTemplate(c, b, text)
 		if err != nil {
 			return err
@@ -26,12 +26,14 @@ func initFuncs(c *context, b *Bogie) template.FuncMap {
 		return nil
 	}
 
+	file.SetTemplater(templater)
+
 	return template.FuncMap{
 		"latestImage": ecr.LatestImage(b.SkipImageLookup),
-		"readDir":     file.ReadDir(f),
-		"readFile":    file.ReadFile(f),
-		"decryptFile": file.DecryptFile(f),
-		"decryptDir":  file.DecryptDir(f),
+		"readDir":     file.ReadDir,
+		"readFile":    file.ReadFile,
+		"decryptFile": file.DecryptFile,
+		"decryptDir":  file.DecryptDir,
 		"basicAuth":   crypto.BasicAuth,
 		"json":        types.JSON,
 		"jsonArray":   types.JSONArray,
