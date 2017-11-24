@@ -1,4 +1,4 @@
-FROM golang:1.8-alpine AS build
+FROM golang:1.9-alpine AS build
 RUN apk --no-cache update && \
     apk --no-cache add make ca-certificates git && \
     rm -rf /var/cache/apk/*
