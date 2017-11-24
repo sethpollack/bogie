@@ -7,51 +7,65 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"go.mozilla.org/sops/decrypt"
 	"golang.org/x/oauth2"
 )
 
-type GitConfig struct {
+type repoInfo struct {
 	owner string
 	repo  string
 	path  string
 }
 
-type FileData struct {
+type fileInfo struct {
 	name string
 	dir  bool
+	size int64
+	time time.Time
 }
 
-func (f *FileData) IsDir() bool {
-	return f.dir
+func (f *fileInfo) IsDir() bool        { return f.dir }
+func (f *fileInfo) Name() string       { return f.name }
+func (f *fileInfo) Size() int64        { return f.size }
+func (f *fileInfo) ModTime() time.Time { return f.time }
+func (f *fileInfo) Sys() interface{}   { return nil }
+func (f *fileInfo) Mode() os.FileMode {
+	if f.IsDir() {
+		return os.ModePerm | os.ModeDir
+	}
+	return os.FileMode(0644)
 }
 
-func (f *FileData) Name() string {
-	return f.name
-}
-
-func ReadDir(dirname string) ([]FileData, error) {
+func ReadDir(dirname string) ([]os.FileInfo, error) {
 	if ok := isValidUrl(dirname); !ok {
-		return readDir(dirname)
+		return ioutil.ReadDir(dirname)
 	}
 
-	return readGitDir(dirname)
+	return readRepoDir(dirname)
 }
 
-func readDir(dirname string) ([]FileData, error) {
-	files, err := ioutil.ReadDir(dirname)
+func ReadFile(filename string) ([]byte, error) {
+	if ok := isValidUrl(filename); !ok {
+		return readFile(filename)
+	}
+
+	return readRepoFile(filename)
+}
+
+func DecryptFile(filename, format string) ([]byte, error) {
+	if ok := isValidUrl(filename); !ok {
+		return decrypt.File(filename, format)
+	}
+
+	content, err := readRepoFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	filedata := []FileData{}
-	for _, f := range files {
-		filedata = append(filedata, FileData{name: f.Name(), dir: f.IsDir()})
-	}
-
-	return filedata, nil
+	return decrypt.Data([]byte(content), format)
 }
 
 func getClient() (client *github.Client) {
@@ -66,7 +80,7 @@ func getClient() (client *github.Client) {
 	return github.NewClient(tc)
 }
 
-func readGitDir(dirname string) ([]FileData, error) {
+func readRepoDir(dirname string) ([]os.FileInfo, error) {
 	client := getClient()
 	ctx := context.Background()
 	conf := parseUrl(dirname)
@@ -76,66 +90,53 @@ func readGitDir(dirname string) ([]FileData, error) {
 		return nil, err
 	}
 
-	files := []FileData{}
+	files := []os.FileInfo{}
 	for _, f := range dc {
-		files = append(files, FileData{name: *f.Name, dir: *f.Type == "dir"})
+		files = append(files, &fileInfo{name: *f.Name, size: int64(*f.Size), dir: *f.Type == "dir"})
 	}
 
 	return files, nil
 }
 
-func DecryptFile(filename, format string) ([]byte, error) {
-	if ok := isValidUrl(filename); !ok {
-		return decrypt.File(filename, format)
-	}
-
-	content, err := readGitInput(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	return decrypt.Data([]byte(content), format)
-}
-
-func ReadInput(filename string) (string, error) {
-	if ok := isValidUrl(filename); !ok {
-		return readInput(filename)
-	}
-
-	return readGitInput(filename)
-}
-
-func readInput(filename string) (string, error) {
+func readFile(filename string) ([]byte, error) {
 	inFile, err := os.Open(filename)
 	if err != nil {
-		return "", fmt.Errorf("failed to open %s\n%v", filename, err)
+		return []byte{}, fmt.Errorf("failed to open %s\n%v", filename, err)
 	}
 	defer inFile.Close()
 
 	bytes, err := ioutil.ReadAll(inFile)
 	if err != nil {
 		err = fmt.Errorf("read failed for %s\n%v", filename, err)
-		return "", err
+		return []byte{}, err
 	}
 
-	return string(bytes), nil
+	return bytes, nil
 }
 
-func readGitInput(path string) (string, error) {
+func readRepoFile(path string) ([]byte, error) {
 	client := getClient()
-	ctx := context.Background()
 	conf := parseUrl(path)
-	fc, _, _, err := client.Repositories.GetContents(ctx, conf.owner, conf.repo, conf.path, &github.RepositoryContentGetOptions{})
+
+	fc, _, _, err := client.Repositories.GetContents(
+		context.Background(),
+		conf.owner,
+		conf.repo,
+		conf.path,
+		&github.RepositoryContentGetOptions{},
+	)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
-	return fc.GetContent()
+	content, err := fc.GetContent()
+
+	return []byte(content), err
 }
 
-func parseUrl(url string) GitConfig {
+func parseUrl(url string) repoInfo {
 	split := strings.SplitN(url, "/", 6)
-	return GitConfig{owner: split[3], repo: split[4], path: split[5]}
+	return repoInfo{owner: split[3], repo: split[4], path: split[5]}
 }
 
 func isValidUrl(path string) bool {

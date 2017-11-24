@@ -35,11 +35,11 @@ func Init() *Rules {
 
 // ParseFile parses a BogieIgnore file.
 func (r *Rules) ParseFile(filepath string) error {
-	rules, err := bogieio.ReadInput(filepath)
+	rules, err := bogieio.ReadFile(filepath)
 	if err != nil {
 		return err
 	}
-	return r.Parse(strings.NewReader(rules))
+	return r.Parse(strings.NewReader(string(rules)))
 }
 
 // Parse parses a rules file

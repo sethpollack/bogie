@@ -6,11 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	yaml "gopkg.in/yaml.v2"
-
 	dotaccess "github.com/go-bongo/go-dotaccess"
 	"github.com/imdario/mergo"
-	"github.com/sethpollack/bogie/io"
+	bogieio "github.com/sethpollack/bogie/io"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type applicationOutput struct {
@@ -70,7 +69,7 @@ func genContext(envfile string) (*context, error) {
 		return &c, nil
 	}
 
-	inEnv, err := io.DecryptFile(envfile, "yaml")
+	inEnv, err := bogieio.DecryptFile(envfile, "yaml")
 	if err != nil {
 		return &c, err
 	}
@@ -100,7 +99,7 @@ func setValueContext(app *ApplicationInput, old *context) (*context, error) {
 	}
 
 	for _, file := range files {
-		b, err := io.DecryptFile(file, "yaml")
+		b, err := bogieio.DecryptFile(file, "yaml")
 		if err != nil {
 			continue
 		}
@@ -130,12 +129,12 @@ func processApplication(conf config) error {
 	input := conf.input
 	output := conf.output
 
-	entries, err := io.ReadDir(input)
+	entries, err := bogieio.ReadDir(input)
 	if err != nil {
 		return err
 	}
 
-	helper, _ := io.ReadInput(input + "/_helpers.tmpl")
+	helper, _ := bogieio.ReadFile(input + "/_helpers.tmpl")
 
 	r := conf.bogie.Rules.Clone()
 	r.ParseFile(input + "/.bogieignore")
@@ -157,14 +156,14 @@ func processApplication(conf config) error {
 				return err
 			}
 		} else {
-			inString, err := io.ReadInput(nextInPath)
+			inString, err := bogieio.ReadFile(nextInPath)
 			if err != nil {
 				return err
 			}
 
 			*conf.appOutputs = append(*conf.appOutputs, &applicationOutput{
 				outPath:  nextOutPath,
-				template: helper + inString,
+				template: string(helper) + string(inString),
 				context:  conf.context,
 			})
 		}

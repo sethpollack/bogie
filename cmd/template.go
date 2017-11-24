@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sethpollack/bogie/bogie"
-	"github.com/sethpollack/bogie/io"
+	bogieio "github.com/sethpollack/bogie/io"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -153,7 +153,7 @@ func newBogie(o *bogieOpts) (*bogie.Bogie, error) {
 }
 
 func parseManifest(manifest string, b *bogie.Bogie) error {
-	output, err := io.ReadInput(manifest)
+	output, err := bogieio.ReadFile(manifest)
 	if err != nil {
 		return err
 	}
