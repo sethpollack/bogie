@@ -45,8 +45,10 @@ func (b *Bogie) Run() error {
 		return renderTemplateToDir(b, apps)
 	case "file":
 		return renderTemplateToFile(b, apps)
-	default:
+	case "stdout":
 		return renderTemplateToSTDOUT(b, apps)
+	default:
+		return errors.New(fmt.Sprintf("Unknown output %s", b.OutFormat))
 	}
 }
 
