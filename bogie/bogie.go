@@ -31,7 +31,8 @@ type Bogie struct {
 	OutFormat         string              `yaml:"out_format"`
 	ApplicationInputs []*ApplicationInput `yaml:"applications"`
 	Rules             *ignore.Rules
-	SkipImageLookup   bool `yaml:"skip_image_lookup"`
+	SkipImageLookup   bool   `yaml:"skip_image_lookup"`
+	AppRegex          string `yaml:"app_regex"`
 }
 
 func (b *Bogie) Run() error {

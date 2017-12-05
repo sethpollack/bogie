@@ -3,6 +3,7 @@ package bogie
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -37,7 +38,14 @@ func processApplications(b *Bogie) ([]*applicationOutput, error) {
 	}
 
 	appOutputs := []*applicationOutput{}
+	re := regexp.MustCompile(b.AppRegex)
 	for _, app := range b.ApplicationInputs {
+		if b.AppRegex != "" {
+			if !re.MatchString(app.Name) {
+				continue
+			}
+		}
+
 		c, err := setValueContext(app, c)
 		if err != nil {
 			return nil, err

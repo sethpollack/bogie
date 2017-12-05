@@ -13,6 +13,7 @@ out_format: dir
 env_file: path/to/global/vars/values.yaml
 ignore_file: ./.bogieignore
 skip_image_lookup: false
+app_regex: .*
 applications:
 - name: my-templates
   templates: path/to/templates
@@ -40,6 +41,7 @@ The manifest file supports the following keys.
  - `env_file` global values file.
  - `ignore_file` global `.bogieignore` file.
  - `skip_image_lookup` skip the image lookup in `latestImage` template function.
+ - `app_regex` only build apps with names that match regex
  - `applications` list of applications.
 	 - `name` name of the output directory. (the directory maintains the original structure with the exception of this name)
 	 - `templates` templates directory.
