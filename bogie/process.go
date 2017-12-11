@@ -106,15 +106,24 @@ func setValueContext(app *ApplicationInput, old *context) (*context, error) {
 		files = append(files, app.Values...)
 	}
 
+	dontWarn := func(file string) bool {
+		return len(app.Values) == 0 &&
+			file == fmt.Sprintf("%s/values.yaml", app.Templates)
+	}
+
 	for _, file := range files {
 		b, err := bogieio.DecryptFile(file, "yaml")
 		if err != nil {
-			continue
+			if dontWarn(file) {
+				continue
+			}
+			return &c, err
 		}
+
 		var tmp map[interface{}]interface{}
 		err = yaml.Unmarshal(b, &tmp)
 		if err != nil {
-			continue
+			return &c, err
 		}
 
 		mergo.Merge(&c.Values, tmp)
@@ -126,7 +135,7 @@ func setValueContext(app *ApplicationInput, old *context) (*context, error) {
 		splits := strings.SplitN(keyVal, "=", 2)
 		err := dotaccess.Set(c.Values, splits[0], splits[1])
 		if err != nil {
-			return nil, err
+			return &c, err
 		}
 	}
 
